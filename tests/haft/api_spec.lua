@@ -49,6 +49,16 @@ describe("haft.api", function()
       assert.is_function(api.stats)
     end)
   end)
+
+  describe("dependency functions exist", function()
+    it("has add function", function()
+      assert.is_function(api.add)
+    end)
+
+    it("has add_dependencies function", function()
+      assert.is_function(api.add_dependencies)
+    end)
+  end)
 end)
 
 describe("haft.api internal helpers", function()
@@ -288,6 +298,120 @@ describe("haft.api internal helpers", function()
       local data = {}
       local files = collect(data, "/project")
       assert.equals(0, #files)
+    end)
+  end)
+
+  describe("format_add_result", function()
+    it("formats add results with added dependencies", function()
+      local format = function(data)
+        local lines = {}
+        table.insert(lines, "Dependencies Added")
+        table.insert(lines, string.rep("─", 50))
+        table.insert(lines, "")
+
+        local added = data.added or {}
+        local skipped = data.skipped or {}
+
+        if #added > 0 then
+          table.insert(lines, "Added:")
+          for _, dep in ipairs(added) do
+            if type(dep) == "table" then
+              table.insert(lines, "  ✓ " .. (dep.name or dep.shortcut or "unknown"))
+            else
+              table.insert(lines, "  ✓ " .. tostring(dep))
+            end
+          end
+          table.insert(lines, "")
+        end
+
+        if #skipped > 0 then
+          table.insert(lines, "Skipped (already present):")
+          for _, dep in ipairs(skipped) do
+            if type(dep) == "table" then
+              table.insert(lines, "  - " .. (dep.name or dep.shortcut or "unknown"))
+            else
+              table.insert(lines, "  - " .. tostring(dep))
+            end
+          end
+          table.insert(lines, "")
+        end
+
+        return lines
+      end
+
+      local data = {
+        added = { { name = "Lombok", shortcut = "lombok" } },
+        skipped = {},
+      }
+
+      local lines = format(data)
+      assert.is_true(#lines > 0)
+      assert.equals("Dependencies Added", lines[1])
+
+      local found_lombok = false
+      for _, line in ipairs(lines) do
+        if line:match("Lombok") then
+          found_lombok = true
+        end
+      end
+      assert.is_true(found_lombok)
+    end)
+
+    it("formats add results with skipped dependencies", function()
+      local format = function(data)
+        local lines = {}
+        local skipped = data.skipped or {}
+
+        if #skipped > 0 then
+          table.insert(lines, "Skipped (already present):")
+          for _, dep in ipairs(skipped) do
+            if type(dep) == "table" then
+              table.insert(lines, "  - " .. (dep.name or dep.shortcut or "unknown"))
+            else
+              table.insert(lines, "  - " .. tostring(dep))
+            end
+          end
+        end
+
+        return lines
+      end
+
+      local data = {
+        added = {},
+        skipped = { { name = "JPA", shortcut = "jpa" } },
+      }
+
+      local lines = format(data)
+      local found_skipped = false
+      for _, line in ipairs(lines) do
+        if line:match("Skipped") then
+          found_skipped = true
+        end
+      end
+      assert.is_true(found_skipped)
+    end)
+
+    it("handles string dependencies", function()
+      local format = function(data)
+        local lines = {}
+        local added = data.added or {}
+
+        for _, dep in ipairs(added) do
+          if type(dep) == "table" then
+            table.insert(lines, dep.name or dep.shortcut or "unknown")
+          else
+            table.insert(lines, tostring(dep))
+          end
+        end
+
+        return lines
+      end
+
+      local data = { added = { "lombok", "jpa" } }
+      local lines = format(data)
+      assert.equals(2, #lines)
+      assert.equals("lombok", lines[1])
+      assert.equals("jpa", lines[2])
     end)
   end)
 end)

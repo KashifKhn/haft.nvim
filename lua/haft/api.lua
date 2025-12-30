@@ -527,4 +527,123 @@ function M.generate_dto(name)
   run_generate("dto", "dto", name)
 end
 
+---@param data table
+---@return string[]
+local function format_add_result(data)
+  local lines = {}
+
+  table.insert(lines, "Dependencies Added")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local added = data.added or {}
+  local skipped = data.skipped or {}
+
+  if #added > 0 then
+    table.insert(lines, "Added:")
+    for _, dep in ipairs(added) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✓ " .. (dep.name or dep.shortcut or "unknown"))
+      else
+        table.insert(lines, "  ✓ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #skipped > 0 then
+    table.insert(lines, "Skipped (already present):")
+    for _, dep in ipairs(skipped) do
+      if type(dep) == "table" then
+        table.insert(lines, "  - " .. (dep.name or dep.shortcut or "unknown"))
+      else
+        table.insert(lines, "  - " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #added == 0 and #skipped == 0 then
+    table.insert(lines, "  No changes made")
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Added: %d", #added))
+  table.insert(lines, string.format("  Total Skipped: %d", #skipped))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param deps string[]
+function M.add_dependencies(deps)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  if not deps or #deps == 0 then
+    notify.warn("No dependencies specified")
+    return
+  end
+
+  local args = { "add" }
+  for _, dep in ipairs(deps) do
+    table.insert(args, dep)
+  end
+  table.insert(args, "--no-interactive")
+
+  notify.info("Adding " .. #deps .. " dependency(ies)...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local added = data.added or {}
+        notify.info(string.format("Added %d dependency(ies)", #added))
+        local lines = format_add_result(data)
+        float.open(lines, { title = "Haft Add Dependencies" })
+      else
+        notify.info("Dependencies added successfully")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to add dependencies: " .. result.output)
+    end,
+  })
+end
+
+---@param deps string[]?
+function M.add(deps)
+  if deps and #deps > 0 then
+    M.add_dependencies(deps)
+  else
+    local ok, picker = pcall(require, "haft.telescope.pickers.dependencies")
+    if ok then
+      picker.pick(function(selected)
+        if selected and #selected > 0 then
+          local shortcuts = {}
+          for _, dep in ipairs(selected) do
+            table.insert(shortcuts, dep.shortcut)
+          end
+          M.add_dependencies(shortcuts)
+        end
+      end)
+    else
+      notify.error("Failed to load dependency picker")
+    end
+  end
+end
+
 return M

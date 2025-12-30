@@ -44,6 +44,14 @@ function M.setup()
     local name = opts.args ~= "" and opts.args or nil
     api.generate_dto(name)
   end, { nargs = "?", desc = "Generate request/response DTOs" })
+
+  vim.api.nvim_create_user_command("HaftAdd", function(opts)
+    local deps = nil
+    if opts.args ~= "" then
+      deps = vim.split(opts.args, "%s+")
+    end
+    api.add(deps)
+  end, { nargs = "*", desc = "Add dependencies (opens picker if no args)" })
 end
 
 return M

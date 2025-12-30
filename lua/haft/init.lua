@@ -81,4 +81,10 @@ function M.generate_dto(name)
   api.generate_dto(name)
 end
 
+---@param deps string[]?
+function M.add(deps)
+  local api = require("haft.api")
+  api.add(deps)
+end
+
 return M
