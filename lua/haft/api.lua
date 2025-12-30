@@ -175,14 +175,17 @@ local function format_stats(data)
 
   for _, lang in ipairs(languages) do
     if type(lang) == "table" and lang.name then
-      table.insert(lines, string.format(
-        "  %-15s %8d %10d %10d %10d",
-        lang.name,
-        lang.files or 0,
-        lang.code or 0,
-        lang.comments or 0,
-        lang.blanks or 0
-      ))
+      table.insert(
+        lines,
+        string.format(
+          "  %-15s %8d %10d %10d %10d",
+          lang.name,
+          lang.files or 0,
+          lang.code or 0,
+          lang.comments or 0,
+          lang.blanks or 0
+        )
+      )
       total_files = total_files + (lang.files or 0)
       total_lines = total_lines + (lang.lines or 0)
       total_code = total_code + (lang.code or 0)
@@ -192,14 +195,10 @@ local function format_stats(data)
   end
 
   table.insert(lines, "  " .. string.rep("─", 55))
-  table.insert(lines, string.format(
-    "  %-15s %8d %10d %10d %10d",
-    "TOTAL",
-    total_files,
-    total_code,
-    total_comments,
-    total_blanks
-  ))
+  table.insert(
+    lines,
+    string.format("  %-15s %8d %10d %10d %10d", "TOTAL", total_files, total_code, total_comments, total_blanks)
+  )
 
   table.insert(lines, "")
   table.insert(lines, "Summary")
