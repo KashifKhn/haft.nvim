@@ -1,0 +1,39 @@
+name: Validate Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'doc/*.txt'
+      - 'README.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'doc/*.txt'
+      - 'README.md'
+
+jobs:
+  validate:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Validate vimdoc
+        run: |
+          nvim --headless -c "helptags doc/" -c "q"
+          echo "Vimdoc tags generated successfully"
+
+      - name: Check vimdoc exists
+        run: |
+          if [ ! -f "doc/haft.txt" ]; then
+            echo "Error: doc/haft.txt not found"
+            exit 1
+          fi
+          echo "doc/haft.txt exists"
