@@ -1,0 +1,23 @@
+# Dependencies
+.tests/
+
+# Neovim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+
+# Local config
+.luarc.json
+
+n_docs/
