@@ -1,0 +1,539 @@
+*haft.txt*  Neovim plugin for Haft CLI - Spring Boot productivity tool
+
+Author:   KashifKhn
+Homepage: https://github.com/KashifKhn/haft.nvim
+License:  MIT
+
+==============================================================================
+CONTENTS                                                        *haft-contents*
+
+    1. Introduction ............................ |haft-introduction|
+    2. Requirements ............................ |haft-requirements|
+    3. Installation ............................ |haft-installation|
+    4. Configuration ........................... |haft-configuration|
+    5. Commands ................................ |haft-commands|
+    6. Telescope ............................... |haft-telescope|
+    7. Lua API ................................. |haft-api|
+    8. Events .................................. |haft-events|
+    9. Health Check ............................ |haft-health|
+   10. Troubleshooting ......................... |haft-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                             *haft-introduction*
+
+haft.nvim is a Neovim plugin that integrates the Haft CLI - a Spring Boot
+productivity tool - directly into Neovim.
+
+Features:~
+    - Full integration with all Haft CLI commands
+    - Telescope pickers for interactive selection
+    - Floating windows for detailed output
+    - Async command execution (non-blocking)
+    - Auto-detection of Haft/Spring Boot projects
+    - Fully configurable with no default keybindings
+
+==============================================================================
+2. REQUIREMENTS                                             *haft-requirements*
+
+Required:~
+    - Neovim >= 0.9.0
+    - Haft CLI >= 0.1.11 (https://github.com/KashifKhn/haft)
+    - plenary.nvim (https://github.com/nvim-lua/plenary.nvim)
+
+Optional (Recommended):~
+    - telescope.nvim - Interactive pickers
+    - noice.nvim - Enhanced notifications
+    - nui.nvim - UI components
+
+==============================================================================
+3. INSTALLATION                                             *haft-installation*
+
+Using lazy.nvim:~
+>lua
+    {
+      "KashifKhn/haft.nvim",
+      dependencies = {
+        "nvim-lua/plenary.nvim",
+        "nvim-telescope/telescope.nvim",
+      },
+      cmd = { "HaftInfo", "HaftAdd", "HaftGenerate" },
+      opts = {},
+    }
+<
+
+Using packer.nvim:~
+>lua
+    use {
+      "KashifKhn/haft.nvim",
+      requires = {
+        "nvim-lua/plenary.nvim",
+        "nvim-telescope/telescope.nvim",
+      },
+      config = function()
+        require("haft").setup()
+      end,
+    }
+<
+
+==============================================================================
+4. CONFIGURATION                                           *haft-configuration*
+
+Call `require("haft").setup(opts)` to configure the plugin.
+
+                                                              *haft-config-opts*
+Default configuration:~
+>lua
+    require("haft").setup({
+      haft_path = "haft",
+
+      detection = {
+        enabled = true,
+        patterns = { ".haft.yaml", "pom.xml", "build.gradle", "build.gradle.kts" },
+      },
+
+      notifications = {
+        enabled = true,
+        level = "info",
+        timeout = 3000,
+      },
+
+      float = {
+        border = "rounded",
+        width = 0.8,
+        height = 0.8,
+        title_pos = "center",
+      },
+
+      picker = {
+        provider = "auto",
+        telescope = {
+          theme = "dropdown",
+          layout_config = { width = 0.8, height = 0.6 },
+        },
+      },
+
+      auto_open = {
+        enabled = true,
+        strategy = "first",
+      },
+
+      quickfix = {
+        enabled = true,
+        auto_open = false,
+      },
+
+      terminal = {
+        type = "auto",
+        float = { border = "rounded", width = 0.8, height = 0.8 },
+        split = { size = 15, position = "below" },
+        persist = true,
+        auto_close = false,
+      },
+
+      dev = {
+        restart_on_save = false,
+        save_patterns = { "*.java", "*.kt", "*.xml", "*.yaml", "*.yml", "*.properties" },
+      },
+
+      commands = {
+        generate = { refresh = false },
+      },
+
+      keymaps = {},
+    })
+<
+
+                                                        *haft-config-haft_path*
+haft_path~
+    Type: `string`
+    Default: `"haft"`
+    Path to the Haft CLI binary. Auto-detected if in PATH.
+
+                                                        *haft-config-detection*
+detection~
+    Type: `table`
+    Settings for project auto-detection.
+
+    detection.enabled~
+        Type: `boolean`
+        Default: `true`
+        Enable project auto-detection.
+
+    detection.patterns~
+        Type: `table`
+        Default: `{ ".haft.yaml", "pom.xml", "build.gradle", "build.gradle.kts" }`
+        File patterns that indicate a Haft project.
+
+                                                    *haft-config-notifications*
+notifications~
+    Type: `table`
+    Settings for notifications.
+
+    notifications.enabled~
+        Type: `boolean`
+        Default: `true`
+        Enable notifications.
+
+    notifications.level~
+        Type: `string`
+        Default: `"info"`
+        Minimum notification level: "debug", "info", "warn", "error".
+
+    notifications.timeout~
+        Type: `number`
+        Default: `3000`
+        Notification timeout in milliseconds.
+
+                                                           *haft-config-picker*
+picker~
+    Type: `table`
+    Settings for picker UI.
+
+    picker.provider~
+        Type: `string`
+        Default: `"auto"`
+        Picker provider: "auto", "telescope", "native".
+        - "auto": Use Telescope if available, fallback to vim.ui.select
+        - "telescope": Force Telescope, error if unavailable
+        - "native": Always use vim.ui.select
+
+                                                         *haft-config-terminal*
+terminal~
+    Type: `table`
+    Settings for terminal buffer.
+
+    terminal.type~
+        Type: `string`
+        Default: `"auto"`
+        Terminal type: "auto", "float", "split", "vsplit", "tab".
+
+    terminal.persist~
+        Type: `boolean`
+        Default: `true`
+        Keep terminal buffer alive for reuse.
+
+==============================================================================
+5. COMMANDS                                                     *haft-commands*
+
+                                                                    *:HaftInfo*
+:HaftInfo~
+    Show project information in a floating window.
+
+                                                                  *:HaftRoutes*
+:HaftRoutes~
+    Show API routes in a floating window.
+
+                                                                   *:HaftStats*
+:HaftStats~
+    Show code statistics in a floating window.
+
+                                                                     *:HaftAdd*
+:HaftAdd [dependency...]~
+    Add dependencies to the project.
+    - No args: Opens picker to select dependencies
+    - With args: Adds specified dependencies directly
+    
+    Example:~
+>vim
+        :HaftAdd lombok
+        :HaftAdd jpa validation web
+<
+
+                                                                  *:HaftRemove*
+:HaftRemove [dependency...]~
+    Remove dependencies from the project.
+    - No args: Opens picker with current dependencies
+    - With args: Removes specified dependencies directly
+
+                                                                *:HaftGenerate*
+:HaftGenerate~
+    Open component type picker to select what to generate.
+
+                                                        *:HaftGenerateResource*
+:HaftGenerateResource [name]~
+    Generate a complete CRUD resource.
+    - No args: Prompts for name
+    - With args: Uses provided name
+    
+    Generates:~
+        - Controller
+        - Service + ServiceImpl
+        - Repository
+        - Entity
+        - Request/Response DTOs
+        - Mapper
+
+                                                      *:HaftGenerateController*
+:HaftGenerateController [name]~
+    Generate a REST controller.
+
+                                                         *:HaftGenerateService*
+:HaftGenerateService [name]~
+    Generate a service interface and implementation.
+
+                                                      *:HaftGenerateRepository*
+:HaftGenerateRepository [name]~
+    Generate a JPA repository interface.
+
+                                                          *:HaftGenerateEntity*
+:HaftGenerateEntity [name]~
+    Generate a JPA entity class.
+
+                                                             *:HaftGenerateDto*
+:HaftGenerateDto [name]~
+    Generate Request and Response DTO classes.
+
+                                                       *:HaftGenerateException*
+:HaftGenerateException~
+    Open picker to select exception types to generate.
+    Generates GlobalExceptionHandler with selected exceptions.
+
+                                                          *:HaftGenerateConfig*
+:HaftGenerateConfig~
+    Open picker to select config classes to generate.
+    Options: CorsConfig, OpenApiConfig, JacksonConfig, etc.
+
+                                                        *:HaftGenerateSecurity*
+:HaftGenerateSecurity~
+    Open picker to select security type.
+    Options: JWT, Session, OAuth2.
+
+                                                                *:HaftDevBuild*
+:HaftDevBuild~
+    Build the project using Maven or Gradle.
+
+                                                                 *:HaftDevTest*
+:HaftDevTest~
+    Run tests.
+
+                                                                *:HaftDevServe*
+:HaftDevServe~
+    Start development server with hot-reload.
+
+                                                              *:HaftDevRestart*
+:HaftDevRestart~
+    Trigger restart of running development server.
+    Works even if server was started externally (tmux, separate terminal).
+
+                                                                *:HaftDevClean*
+:HaftDevClean~
+    Clean build artifacts.
+
+                                                               *:HaftDevToggle*
+:HaftDevToggle~
+    Toggle terminal visibility.
+
+==============================================================================
+6. TELESCOPE                                                   *haft-telescope*
+
+The plugin provides a Telescope extension with the following pickers:
+
+                                                     *haft-telescope-extension*
+Load Extension:~
+>lua
+    require("telescope").load_extension("haft")
+<
+
+                                                       *haft-telescope-pickers*
+Available Pickers:~
+>vim
+    :Telescope haft dependencies    " Add dependencies
+    :Telescope haft remove          " Remove dependencies
+    :Telescope haft generate        " Component type selection
+    :Telescope haft exceptions      " Exception types (multi-select)
+    :Telescope haft configs         " Config classes (multi-select)
+    :Telescope haft security        " Security types (multi-select)
+<
+
+Via Lua:~
+>lua
+    require("telescope").extensions.haft.dependencies()
+    require("telescope").extensions.haft.remove()
+    require("telescope").extensions.haft.generate()
+<
+
+==============================================================================
+7. LUA API                                                          *haft-api*
+
+                                                                  *haft.setup()*
+haft.setup({opts})~
+    Initialize the plugin with configuration options.
+    See |haft-configuration| for available options.
+
+                                                        *haft.is_haft_project()*
+haft.is_haft_project()~
+    Returns: `boolean`
+    Check if current directory is a Haft/Spring Boot project.
+
+                                                       *haft.get_project_info()*
+haft.get_project_info()~
+    Returns: `table|nil`
+    Get project information or nil if not in a Haft project.
+
+                                                                   *haft.info()*
+haft.info()~
+    Display project information in floating window.
+
+                                                                 *haft.routes()*
+haft.routes()~
+    Display API routes in floating window.
+
+                                                                  *haft.stats()*
+haft.stats()~
+    Display code statistics in floating window.
+
+                                                                    *haft.add()*
+haft.add({dependencies})~
+    Parameters:~
+        {dependencies} `table|nil` - List of dependencies to add
+    Add dependencies. Opens picker if no dependencies provided.
+
+                                                                 *haft.remove()*
+haft.remove({dependencies})~
+    Parameters:~
+        {dependencies} `table|nil` - List of dependencies to remove
+    Remove dependencies. Opens picker if no dependencies provided.
+
+                                                      *haft.generate_resource()*
+haft.generate_resource({name})~
+    Parameters:~
+        {name} `string|nil` - Resource name
+    Generate complete CRUD resource. Prompts for name if not provided.
+
+                                                    *haft.generate_controller()*
+haft.generate_controller({name})~
+    Generate REST controller.
+
+                                                       *haft.generate_service()*
+haft.generate_service({name})~
+    Generate service interface and implementation.
+
+                                                    *haft.generate_repository()*
+haft.generate_repository({name})~
+    Generate JPA repository interface.
+
+                                                        *haft.generate_entity()*
+haft.generate_entity({name})~
+    Generate JPA entity class.
+
+                                                           *haft.generate_dto()*
+haft.generate_dto({name})~
+    Generate Request and Response DTOs.
+
+                                                     *haft.generate_exception()*
+haft.generate_exception()~
+    Open picker to select exception types.
+
+                                                        *haft.generate_config()*
+haft.generate_config()~
+    Open picker to select config classes.
+
+                                                      *haft.generate_security()*
+haft.generate_security()~
+    Open picker to select security type.
+
+                                                              *haft.dev_build()*
+haft.dev_build()~
+    Build the project.
+
+                                                               *haft.dev_test()*
+haft.dev_test()~
+    Run tests.
+
+                                                              *haft.dev_serve()*
+haft.dev_serve()~
+    Start development server.
+
+                                                            *haft.dev_restart()*
+haft.dev_restart()~
+    Trigger server restart.
+
+                                                              *haft.dev_clean()*
+haft.dev_clean()~
+    Clean build artifacts.
+
+                                                             *haft.dev_toggle()*
+haft.dev_toggle()~
+    Toggle terminal visibility.
+
+==============================================================================
+8. EVENTS                                                        *haft-events*
+
+The plugin fires custom User autocommand events:
+
+                                                        *HaftProjectDetected*
+HaftProjectDetected~
+    Fired when a Haft project is detected.
+>lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "HaftProjectDetected",
+      callback = function(ev)
+        print("Project: " .. ev.data.name)
+      end,
+    })
+<
+
+                                                         *HaftFilesGenerated*
+HaftFilesGenerated~
+    Fired after files are generated.
+>lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "HaftFilesGenerated",
+      callback = function(ev)
+        print("Generated " .. #ev.data.files .. " files")
+      end,
+    })
+<
+
+                                                        *HaftCommandComplete*
+HaftCommandComplete~
+    Fired when a command completes successfully.
+
+                                                           *HaftCommandError*
+HaftCommandError~
+    Fired when a command fails.
+
+==============================================================================
+9. HEALTH CHECK                                                  *haft-health*
+
+Run `:checkhealth haft` to verify your setup.
+
+The health check verifies:~
+    - Neovim version
+    - Haft CLI installation and version
+    - Required dependencies (plenary.nvim)
+    - Optional dependencies (telescope.nvim, noice.nvim)
+    - Project detection status
+
+==============================================================================
+10. TROUBLESHOOTING                                       *haft-troubleshooting*
+
+Haft CLI not found:~
+    Ensure Haft CLI is installed and in PATH:
+>bash
+        haft --version
+<
+    Or set custom path:
+>lua
+        require("haft").setup({
+          haft_path = "/path/to/haft",
+        })
+<
+
+Telescope pickers not working:~
+    1. Verify Telescope is installed: `:Telescope`
+    2. Check extension: `:Telescope haft`
+    3. Switch to native picker:
+>lua
+        require("haft").setup({
+          picker = { provider = "native" },
+        })
+<
+
+Commands not working:~
+    Most commands require being in a Haft project directory.
+    Run `:HaftInfo` to check project detection.
+    Look for pom.xml, build.gradle, or .haft.yaml in project root.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
