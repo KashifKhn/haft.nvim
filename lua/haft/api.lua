@@ -1,7 +1,9 @@
 local runner = require("haft.runner")
 local notify = require("haft.ui.notify")
 local float = require("haft.ui.float")
+local input = require("haft.ui.input")
 local detection = require("haft.detection")
+local config = require("haft.config")
 
 local M = {}
 
@@ -333,6 +335,196 @@ function M.stats()
       notify.error("Failed to get stats: " .. result.output)
     end,
   })
+end
+
+---@param data table
+---@return string[]
+local function format_generate_result(data)
+  local lines = {}
+
+  table.insert(lines, "Generation Results")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local results = data.results or {}
+  if #results == 0 then
+    table.insert(lines, "  No files generated")
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  for _, result in ipairs(results) do
+    if type(result) == "table" then
+      local type_name = result.type or "unknown"
+      local name = result.name or ""
+      table.insert(lines, "  " .. type_name:upper() .. ": " .. name)
+
+      local generated = result.generated or {}
+      for _, file in ipairs(generated) do
+        table.insert(lines, "    ✓ " .. file)
+      end
+      table.insert(lines, "")
+    end
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Generated: %d", data.totalGenerated or 0))
+  table.insert(lines, string.format("  Total Skipped:   %d", data.totalSkipped or 0))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@param root string
+---@return string[]
+local function collect_generated_files(data, root)
+  local files = {}
+  local results = data.results or {}
+
+  for _, result in ipairs(results) do
+    if type(result) == "table" then
+      local generated = result.generated or {}
+      for _, file in ipairs(generated) do
+        table.insert(files, root .. "/src/main/java/" .. file)
+      end
+    end
+  end
+
+  return files
+end
+
+---@param files string[]
+local function add_to_quickfix(files)
+  local cfg = config.get()
+  if not cfg.quickfix.enabled or #files == 0 then
+    return
+  end
+
+  local items = {}
+  for _, file in ipairs(files) do
+    table.insert(items, { filename = file, lnum = 1, col = 1, text = "Generated file" })
+  end
+
+  vim.fn.setqflist(items, "r")
+  vim.fn.setqflist({}, "a", { title = "Haft Generated Files" })
+
+  if cfg.quickfix.auto_open then
+    vim.cmd("copen")
+  end
+end
+
+---@param files string[]
+local function auto_open_files(files)
+  local cfg = config.get()
+  if not cfg.auto_open.enabled or #files == 0 then
+    return
+  end
+
+  if cfg.auto_open.strategy == "first" then
+    local file = files[1]
+    if vim.fn.filereadable(file) == 1 then
+      vim.cmd("edit " .. vim.fn.fnameescape(file))
+    end
+  elseif cfg.auto_open.strategy == "all" then
+    for _, file in ipairs(files) do
+      if vim.fn.filereadable(file) == 1 then
+        vim.cmd("edit " .. vim.fn.fnameescape(file))
+      end
+    end
+  end
+end
+
+---@param type_name string
+---@param cli_cmd string
+---@param name string?
+local function run_generate(type_name, cli_cmd, name)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local function execute(resource_name)
+    if not resource_name or resource_name == "" then
+      notify.warn("No name provided")
+      return
+    end
+
+    notify.info("Generating " .. type_name .. ": " .. resource_name .. "...")
+
+    runner.run({
+      args = { "generate", cli_cmd, resource_name, "--no-interactive" },
+      cwd = root,
+      json = true,
+      on_success = function(result)
+        if result.data then
+          local data = unwrap_response(result.data)
+          local total = data.totalGenerated or 0
+
+          if total > 0 then
+            notify.info(string.format("Generated %d file(s) for %s", total, resource_name))
+            local files = collect_generated_files(data, root)
+            add_to_quickfix(files)
+            auto_open_files(files)
+          else
+            notify.warn("No files were generated")
+          end
+
+          local lines = format_generate_result(data)
+          float.open(lines, { title = "Haft Generate " .. type_name:gsub("^%l", string.upper) })
+        else
+          notify.info("Generation complete")
+        end
+      end,
+      on_error = function(result)
+        notify.error("Failed to generate " .. type_name .. ": " .. result.output)
+      end,
+    })
+  end
+
+  if name then
+    execute(name)
+  else
+    input.prompt(type_name:gsub("^%l", string.upper) .. " name: ", {}, execute)
+  end
+end
+
+---@param name string?
+function M.generate_resource(name)
+  run_generate("resource", "resource", name)
+end
+
+---@param name string?
+function M.generate_controller(name)
+  run_generate("controller", "controller", name)
+end
+
+---@param name string?
+function M.generate_service(name)
+  run_generate("service", "service", name)
+end
+
+---@param name string?
+function M.generate_repository(name)
+  run_generate("repository", "repository", name)
+end
+
+---@param name string?
+function M.generate_entity(name)
+  run_generate("entity", "entity", name)
+end
+
+---@param name string?
+function M.generate_dto(name)
+  run_generate("dto", "dto", name)
 end
 
 return M

@@ -14,6 +14,36 @@ function M.setup()
   vim.api.nvim_create_user_command("HaftStats", function()
     api.stats()
   end, { desc = "Show code statistics" })
+
+  vim.api.nvim_create_user_command("HaftGenerateResource", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_resource(name)
+  end, { nargs = "?", desc = "Generate a complete CRUD resource" })
+
+  vim.api.nvim_create_user_command("HaftGenerateController", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_controller(name)
+  end, { nargs = "?", desc = "Generate a REST controller" })
+
+  vim.api.nvim_create_user_command("HaftGenerateService", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_service(name)
+  end, { nargs = "?", desc = "Generate a service layer" })
+
+  vim.api.nvim_create_user_command("HaftGenerateRepository", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_repository(name)
+  end, { nargs = "?", desc = "Generate a JPA repository" })
+
+  vim.api.nvim_create_user_command("HaftGenerateEntity", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_entity(name)
+  end, { nargs = "?", desc = "Generate a JPA entity" })
+
+  vim.api.nvim_create_user_command("HaftGenerateDto", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.generate_dto(name)
+  end, { nargs = "?", desc = "Generate request/response DTOs" })
 end
 
 return M

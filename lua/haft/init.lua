@@ -45,4 +45,40 @@ function M.stats()
   api.stats()
 end
 
+---@param name string?
+function M.generate_resource(name)
+  local api = require("haft.api")
+  api.generate_resource(name)
+end
+
+---@param name string?
+function M.generate_controller(name)
+  local api = require("haft.api")
+  api.generate_controller(name)
+end
+
+---@param name string?
+function M.generate_service(name)
+  local api = require("haft.api")
+  api.generate_service(name)
+end
+
+---@param name string?
+function M.generate_repository(name)
+  local api = require("haft.api")
+  api.generate_repository(name)
+end
+
+---@param name string?
+function M.generate_entity(name)
+  local api = require("haft.api")
+  api.generate_entity(name)
+end
+
+---@param name string?
+function M.generate_dto(name)
+  local api = require("haft.api")
+  api.generate_dto(name)
+end
+
 return M
