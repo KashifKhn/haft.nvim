@@ -8,6 +8,25 @@ M._cached_root = nil
 ---@type table?
 M._cached_info = nil
 
+---@param path string
+---@param pattern string
+---@return string?
+local function find_root(path, pattern)
+  if vim.fs.root then
+    return vim.fs.root(path, pattern)
+  end
+
+  local current = path
+  while current ~= "/" do
+    local target = current .. "/" .. pattern
+    if vim.fn.filereadable(target) == 1 or vim.fn.isdirectory(target) == 1 then
+      return current
+    end
+    current = vim.fn.fnamemodify(current, ":h")
+  end
+  return nil
+end
+
 ---@param path string?
 ---@return string?
 function M.find_project_root(path)
@@ -19,7 +38,7 @@ function M.find_project_root(path)
   end
 
   for _, pattern in ipairs(cfg.detection.patterns) do
-    local root = vim.fs.root(path, pattern)
+    local root = find_root(path, pattern)
     if root then
       return root
     end

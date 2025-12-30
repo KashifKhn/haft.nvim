@@ -142,13 +142,15 @@ local defaults = {
 ---@type HaftConfig?
 M.options = nil
 
+local islist = vim.islist or vim.tbl_islist
+
 ---@param tbl1 table
 ---@param tbl2 table
 ---@return table
 local function deep_merge(tbl1, tbl2)
   local result = vim.deepcopy(tbl1)
   for key, value in pairs(tbl2) do
-    if type(value) == "table" and type(result[key]) == "table" and not vim.islist(value) then
+    if type(value) == "table" and type(result[key]) == "table" and not islist(value) then
       result[key] = deep_merge(result[key], value)
     else
       result[key] = value
