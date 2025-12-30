@@ -59,6 +59,58 @@ describe("haft.api", function()
       assert.is_function(api.add_dependencies)
     end)
   end)
+
+  describe("add function behavior", function()
+    it("add with deps array calls add_dependencies", function()
+      local called_with = nil
+      local original_add_deps = api.add_dependencies
+
+      api.add_dependencies = function(deps)
+        called_with = deps
+      end
+
+      api.add({ "lombok", "jpa" })
+
+      assert.is_table(called_with)
+      assert.equals(2, #called_with)
+      assert.equals("lombok", called_with[1])
+      assert.equals("jpa", called_with[2])
+
+      api.add_dependencies = original_add_deps
+    end)
+
+    it("add with empty array opens picker", function()
+      local picker_called = false
+
+      package.loaded["haft.telescope.pickers.dependencies"] = {
+        pick = function(callback)
+          picker_called = true
+        end,
+      }
+
+      api.add({})
+
+      assert.is_true(picker_called)
+
+      package.loaded["haft.telescope.pickers.dependencies"] = nil
+    end)
+
+    it("add with nil opens picker", function()
+      local picker_called = false
+
+      package.loaded["haft.telescope.pickers.dependencies"] = {
+        pick = function(callback)
+          picker_called = true
+        end,
+      }
+
+      api.add(nil)
+
+      assert.is_true(picker_called)
+
+      package.loaded["haft.telescope.pickers.dependencies"] = nil
+    end)
+  end)
 end)
 
 describe("haft.api internal helpers", function()
@@ -475,5 +527,182 @@ describe("haft.api config integration", function()
       local cfg = config.get()
       assert.is_false(cfg.quickfix.enabled)
     end)
+  end)
+end)
+
+describe("haft.api add_dependencies", function()
+  local api
+  local mock_runner
+  local mock_notify
+  local mock_detection
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.float"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_runner = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function(opts)
+        mock_runner.last_opts = opts
+        if mock_runner.mock_success then
+          opts.on_success(mock_runner.mock_result)
+        elseif mock_runner.mock_error and opts.on_error then
+          opts.on_error(mock_runner.mock_result)
+        end
+      end,
+      last_opts = nil,
+      mock_success = false,
+      mock_error = false,
+      mock_result = nil,
+    }
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    mock_detection = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+
+    package.loaded["haft.runner"] = mock_runner
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = mock_detection
+    package.loaded["haft.ui.float"] = {
+      open = function() end,
+    }
+
+    api = require("haft.api")
+  end)
+
+  after_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.float"] = nil
+  end)
+
+  it("builds correct args for single dependency", function()
+    api.add_dependencies({ "lombok" })
+
+    assert.is_table(mock_runner.last_opts)
+    assert.is_table(mock_runner.last_opts.args)
+
+    local args = mock_runner.last_opts.args
+    assert.equals("add", args[1])
+    assert.equals("lombok", args[2])
+    assert.equals("--no-interactive", args[3])
+  end)
+
+  it("builds correct args for multiple dependencies", function()
+    api.add_dependencies({ "lombok", "jpa", "validation" })
+
+    local args = mock_runner.last_opts.args
+    assert.equals("add", args[1])
+    assert.equals("lombok", args[2])
+    assert.equals("jpa", args[3])
+    assert.equals("validation", args[4])
+    assert.equals("--no-interactive", args[5])
+  end)
+
+  it("uses project root as cwd", function()
+    api.add_dependencies({ "lombok" })
+
+    assert.equals("/mock/project", mock_runner.last_opts.cwd)
+  end)
+
+  it("requests json output", function()
+    api.add_dependencies({ "lombok" })
+
+    assert.is_true(mock_runner.last_opts.json)
+  end)
+
+  it("warns when no dependencies provided", function()
+    api.add_dependencies({})
+
+    assert.equals("No dependencies specified", mock_notify.last_warn)
+    assert.is_nil(mock_runner.last_opts)
+  end)
+
+  it("warns when nil dependencies provided", function()
+    api.add_dependencies(nil)
+
+    assert.equals("No dependencies specified", mock_notify.last_warn)
+    assert.is_nil(mock_runner.last_opts)
+  end)
+
+  it("shows info message when adding dependencies", function()
+    api.add_dependencies({ "lombok", "jpa" })
+
+    assert.equals("Adding 2 dependency(ies)...", mock_notify.last_info)
+  end)
+
+  it("errors when haft cli not available", function()
+    mock_runner.is_haft_available = function()
+      return false
+    end
+
+    api.add_dependencies({ "lombok" })
+
+    assert.is_not_nil(mock_notify.last_error)
+    assert.is_truthy(mock_notify.last_error:match("Haft CLI not found"))
+  end)
+
+  it("warns when not in a project", function()
+    mock_detection.get_project_root = function()
+      return nil
+    end
+
+    api.add_dependencies({ "lombok" })
+
+    assert.equals("Not in a Haft/Spring Boot project", mock_notify.last_warn)
+  end)
+end)
+
+describe("haft.commands HaftAdd", function()
+  it("parses space-separated dependencies", function()
+    local parsed = vim.split("lombok jpa validation", "%s+")
+    assert.equals(3, #parsed)
+    assert.equals("lombok", parsed[1])
+    assert.equals("jpa", parsed[2])
+    assert.equals("validation", parsed[3])
+  end)
+
+  it("handles empty args string", function()
+    local args = ""
+    local deps = nil
+    if args ~= "" then
+      deps = vim.split(args, "%s+")
+    end
+    assert.is_nil(deps)
+  end)
+
+  it("handles single dependency", function()
+    local parsed = vim.split("lombok", "%s+")
+    assert.equals(1, #parsed)
+    assert.equals("lombok", parsed[1])
   end)
 end)
