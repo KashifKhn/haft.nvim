@@ -11,6 +11,10 @@ function M.setup(opts)
   end
 
   config.setup(opts)
+
+  local commands = require("haft.commands")
+  commands.setup()
+
   M._initialized = true
 end
 
@@ -24,6 +28,21 @@ end
 function M.get_project_info()
   local detection = require("haft.detection")
   return detection.get_project_info()
+end
+
+function M.info()
+  local api = require("haft.api")
+  api.info()
+end
+
+function M.routes()
+  local api = require("haft.api")
+  api.routes()
+end
+
+function M.stats()
+  local api = require("haft.api")
+  api.stats()
 end
 
 return M
