@@ -1,7 +1,9 @@
 local runner = require("haft.runner")
 local notify = require("haft.ui.notify")
 local float = require("haft.ui.float")
+local input = require("haft.ui.input")
 local detection = require("haft.detection")
+local config = require("haft.config")
 
 local M = {}
 
@@ -333,6 +335,434 @@ function M.stats()
       notify.error("Failed to get stats: " .. result.output)
     end,
   })
+end
+
+---@param data table
+---@return string[]
+local function format_generate_result(data)
+  local lines = {}
+
+  table.insert(lines, "Generation Results")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local results = data.results or {}
+  if #results == 0 then
+    table.insert(lines, "  No files generated")
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  for _, result in ipairs(results) do
+    if type(result) == "table" then
+      local type_name = result.type or "unknown"
+      local name = result.name or ""
+      table.insert(lines, "  " .. type_name:upper() .. ": " .. name)
+
+      local generated = result.generated or {}
+      for _, file in ipairs(generated) do
+        table.insert(lines, "    ✓ " .. file)
+      end
+      table.insert(lines, "")
+    end
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Generated: %d", data.totalGenerated or 0))
+  table.insert(lines, string.format("  Total Skipped:   %d", data.totalSkipped or 0))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@param root string
+---@return string[]
+local function collect_generated_files(data, root)
+  local files = {}
+  local results = data.results or {}
+
+  for _, result in ipairs(results) do
+    if type(result) == "table" then
+      local generated = result.generated or {}
+      for _, file in ipairs(generated) do
+        table.insert(files, root .. "/src/main/java/" .. file)
+      end
+    end
+  end
+
+  return files
+end
+
+---@param files string[]
+local function add_to_quickfix(files)
+  local cfg = config.get()
+  if not cfg.quickfix.enabled or #files == 0 then
+    return
+  end
+
+  local items = {}
+  for _, file in ipairs(files) do
+    table.insert(items, { filename = file, lnum = 1, col = 1, text = "Generated file" })
+  end
+
+  vim.fn.setqflist(items, "r")
+  vim.fn.setqflist({}, "a", { title = "Haft Generated Files" })
+
+  if cfg.quickfix.auto_open then
+    vim.cmd("copen")
+  end
+end
+
+---@param files string[]
+local function auto_open_files(files)
+  local cfg = config.get()
+  if not cfg.auto_open.enabled or #files == 0 then
+    return
+  end
+
+  if cfg.auto_open.strategy == "first" then
+    local file = files[1]
+    if vim.fn.filereadable(file) == 1 then
+      vim.cmd("edit " .. vim.fn.fnameescape(file))
+    end
+  elseif cfg.auto_open.strategy == "all" then
+    for _, file in ipairs(files) do
+      if vim.fn.filereadable(file) == 1 then
+        vim.cmd("edit " .. vim.fn.fnameescape(file))
+      end
+    end
+  end
+end
+
+---@param type_name string
+---@param cli_cmd string
+---@param name string?
+local function run_generate(type_name, cli_cmd, name)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local function execute(resource_name)
+    if not resource_name or resource_name == "" then
+      notify.warn("No name provided")
+      return
+    end
+
+    notify.info("Generating " .. type_name .. ": " .. resource_name .. "...")
+
+    runner.run({
+      args = { "generate", cli_cmd, resource_name, "--no-interactive" },
+      cwd = root,
+      json = true,
+      on_success = function(result)
+        if result.data then
+          local data = unwrap_response(result.data)
+          local total = data.totalGenerated or 0
+
+          if total > 0 then
+            notify.info(string.format("Generated %d file(s) for %s", total, resource_name))
+            local files = collect_generated_files(data, root)
+            add_to_quickfix(files)
+            auto_open_files(files)
+          else
+            notify.warn("No files were generated")
+          end
+
+          local lines = format_generate_result(data)
+          float.open(lines, { title = "Haft Generate " .. type_name:gsub("^%l", string.upper) })
+        else
+          notify.info("Generation complete")
+        end
+      end,
+      on_error = function(result)
+        notify.error("Failed to generate " .. type_name .. ": " .. result.output)
+      end,
+    })
+  end
+
+  if name then
+    execute(name)
+  else
+    input.prompt(type_name:gsub("^%l", string.upper) .. " name: ", {}, execute)
+  end
+end
+
+---@param name string?
+function M.generate_resource(name)
+  run_generate("resource", "resource", name)
+end
+
+---@param name string?
+function M.generate_controller(name)
+  run_generate("controller", "controller", name)
+end
+
+---@param name string?
+function M.generate_service(name)
+  run_generate("service", "service", name)
+end
+
+---@param name string?
+function M.generate_repository(name)
+  run_generate("repository", "repository", name)
+end
+
+---@param name string?
+function M.generate_entity(name)
+  run_generate("entity", "entity", name)
+end
+
+---@param name string?
+function M.generate_dto(name)
+  run_generate("dto", "dto", name)
+end
+
+---@param data table
+---@return string[]
+local function format_add_result(data)
+  local lines = {}
+
+  table.insert(lines, "Dependencies Added")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local added = data.added or {}
+  local skipped = data.skipped or {}
+
+  if #added > 0 then
+    table.insert(lines, "Added:")
+    for _, dep in ipairs(added) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✓ " .. (dep.name or dep.shortcut or "unknown"))
+      else
+        table.insert(lines, "  ✓ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #skipped > 0 then
+    table.insert(lines, "Skipped (already present):")
+    for _, dep in ipairs(skipped) do
+      if type(dep) == "table" then
+        table.insert(lines, "  - " .. (dep.name or dep.shortcut or "unknown"))
+      else
+        table.insert(lines, "  - " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #added == 0 and #skipped == 0 then
+    table.insert(lines, "  No changes made")
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Added: %d", #added))
+  table.insert(lines, string.format("  Total Skipped: %d", #skipped))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param deps string[]
+function M.add_dependencies(deps)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  if not deps or #deps == 0 then
+    notify.warn("No dependencies specified")
+    return
+  end
+
+  local args = { "add" }
+  for _, dep in ipairs(deps) do
+    table.insert(args, dep)
+  end
+  table.insert(args, "--no-interactive")
+
+  notify.info("Adding " .. #deps .. " dependency(ies)...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local added = data.added or {}
+        notify.info(string.format("Added %d dependency(ies)", #added))
+        local lines = format_add_result(data)
+        float.open(lines, { title = "Haft Add Dependencies" })
+      else
+        notify.info("Dependencies added successfully")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to add dependencies: " .. result.output)
+    end,
+  })
+end
+
+---@param deps string[]?
+function M.add(deps)
+  if deps and #deps > 0 then
+    M.add_dependencies(deps)
+  else
+    local ok, picker = pcall(require, "haft.telescope.pickers.dependencies")
+    if ok then
+      picker.pick(function(selected)
+        if selected and #selected > 0 then
+          local shortcuts = {}
+          for _, dep in ipairs(selected) do
+            table.insert(shortcuts, dep.shortcut)
+          end
+          M.add_dependencies(shortcuts)
+        end
+      end)
+    else
+      notify.error("Failed to load dependency picker")
+    end
+  end
+end
+
+---@param data table
+---@return string[]
+local function format_remove_result(data)
+  local lines = {}
+
+  table.insert(lines, "Dependencies Removed")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local removed = data.removed or {}
+  local not_found = data.notFound or {}
+
+  if #removed > 0 then
+    table.insert(lines, "Removed:")
+    for _, dep in ipairs(removed) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✓ " .. (dep.name or dep.artifactId or "unknown"))
+      else
+        table.insert(lines, "  ✓ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #not_found > 0 then
+    table.insert(lines, "Not Found:")
+    for _, dep in ipairs(not_found) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✗ " .. (dep.name or dep.artifactId or "unknown"))
+      else
+        table.insert(lines, "  ✗ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #removed == 0 and #not_found == 0 then
+    table.insert(lines, "  No changes made")
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Removed: %d", #removed))
+  table.insert(lines, string.format("  Not Found: %d", #not_found))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param deps string[]
+function M.remove_dependencies(deps)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  if not deps or #deps == 0 then
+    notify.warn("No dependencies specified")
+    return
+  end
+
+  local args = { "remove" }
+  for _, dep in ipairs(deps) do
+    table.insert(args, dep)
+  end
+  table.insert(args, "--no-interactive")
+
+  notify.info("Removing " .. #deps .. " dependency(ies)...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local removed = data.removed or {}
+        notify.info(string.format("Removed %d dependency(ies)", #removed))
+        local lines = format_remove_result(data)
+        float.open(lines, { title = "Haft Remove Dependencies" })
+      else
+        notify.info("Dependencies removed successfully")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to remove dependencies: " .. result.output)
+    end,
+  })
+end
+
+---@param deps string[]?
+function M.remove(deps)
+  if deps and #deps > 0 then
+    M.remove_dependencies(deps)
+  else
+    local ok, picker = pcall(require, "haft.telescope.pickers.remove")
+    if ok then
+      picker.pick(function(selected)
+        if selected and #selected > 0 then
+          local artifacts = {}
+          for _, dep in ipairs(selected) do
+            table.insert(artifacts, dep.artifactId)
+          end
+          M.remove_dependencies(artifacts)
+        end
+      end)
+    else
+      notify.error("Failed to load remove picker")
+    end
+  end
 end
 
 return M
