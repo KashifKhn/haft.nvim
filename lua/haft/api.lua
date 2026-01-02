@@ -646,4 +646,123 @@ function M.add(deps)
   end
 end
 
+---@param data table
+---@return string[]
+local function format_remove_result(data)
+  local lines = {}
+
+  table.insert(lines, "Dependencies Removed")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  local removed = data.removed or {}
+  local not_found = data.notFound or {}
+
+  if #removed > 0 then
+    table.insert(lines, "Removed:")
+    for _, dep in ipairs(removed) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✓ " .. (dep.name or dep.artifactId or "unknown"))
+      else
+        table.insert(lines, "  ✓ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #not_found > 0 then
+    table.insert(lines, "Not Found:")
+    for _, dep in ipairs(not_found) do
+      if type(dep) == "table" then
+        table.insert(lines, "  ✗ " .. (dep.name or dep.artifactId or "unknown"))
+      else
+        table.insert(lines, "  ✗ " .. tostring(dep))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if #removed == 0 and #not_found == 0 then
+    table.insert(lines, "  No changes made")
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, string.format("  Total Removed: %d", #removed))
+  table.insert(lines, string.format("  Not Found: %d", #not_found))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param deps string[]
+function M.remove_dependencies(deps)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  if not deps or #deps == 0 then
+    notify.warn("No dependencies specified")
+    return
+  end
+
+  local args = { "remove" }
+  for _, dep in ipairs(deps) do
+    table.insert(args, dep)
+  end
+  table.insert(args, "--no-interactive")
+
+  notify.info("Removing " .. #deps .. " dependency(ies)...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local removed = data.removed or {}
+        notify.info(string.format("Removed %d dependency(ies)", #removed))
+        local lines = format_remove_result(data)
+        float.open(lines, { title = "Haft Remove Dependencies" })
+      else
+        notify.info("Dependencies removed successfully")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to remove dependencies: " .. result.output)
+    end,
+  })
+end
+
+---@param deps string[]?
+function M.remove(deps)
+  if deps and #deps > 0 then
+    M.remove_dependencies(deps)
+  else
+    local ok, picker = pcall(require, "haft.telescope.pickers.remove")
+    if ok then
+      picker.pick(function(selected)
+        if selected and #selected > 0 then
+          local artifacts = {}
+          for _, dep in ipairs(selected) do
+            table.insert(artifacts, dep.artifactId)
+          end
+          M.remove_dependencies(artifacts)
+        end
+      end)
+    else
+      notify.error("Failed to load remove picker")
+    end
+  end
+end
+
 return M

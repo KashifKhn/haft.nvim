@@ -87,4 +87,10 @@ function M.add(deps)
   api.add(deps)
 end
 
+---@param deps string[]?
+function M.remove(deps)
+  local api = require("haft.api")
+  api.remove(deps)
+end
+
 return M

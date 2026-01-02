@@ -22,5 +22,18 @@ return telescope.register_extension({
         end
       end)
     end,
+    remove = function(opts)
+      local picker = require("haft.telescope.pickers.remove")
+      local api = require("haft.api")
+      picker.pick(function(selected)
+        if selected and #selected > 0 then
+          local artifacts = {}
+          for _, dep in ipairs(selected) do
+            table.insert(artifacts, dep.artifactId)
+          end
+          api.remove_dependencies(artifacts)
+        end
+      end)
+    end,
   },
 })

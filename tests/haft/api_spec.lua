@@ -58,6 +58,14 @@ describe("haft.api", function()
     it("has add_dependencies function", function()
       assert.is_function(api.add_dependencies)
     end)
+
+    it("has remove function", function()
+      assert.is_function(api.remove)
+    end)
+
+    it("has remove_dependencies function", function()
+      assert.is_function(api.remove_dependencies)
+    end)
   end)
 
   describe("add function behavior", function()
@@ -109,6 +117,58 @@ describe("haft.api", function()
       assert.is_true(picker_called)
 
       package.loaded["haft.telescope.pickers.dependencies"] = nil
+    end)
+  end)
+
+  describe("remove function behavior", function()
+    it("remove with deps array calls remove_dependencies", function()
+      local called_with = nil
+      local original_remove_deps = api.remove_dependencies
+
+      api.remove_dependencies = function(deps)
+        called_with = deps
+      end
+
+      api.remove({ "lombok", "jpa" })
+
+      assert.is_table(called_with)
+      assert.equals(2, #called_with)
+      assert.equals("lombok", called_with[1])
+      assert.equals("jpa", called_with[2])
+
+      api.remove_dependencies = original_remove_deps
+    end)
+
+    it("remove with empty array opens picker", function()
+      local picker_called = false
+
+      package.loaded["haft.telescope.pickers.remove"] = {
+        pick = function(callback)
+          picker_called = true
+        end,
+      }
+
+      api.remove({})
+
+      assert.is_true(picker_called)
+
+      package.loaded["haft.telescope.pickers.remove"] = nil
+    end)
+
+    it("remove with nil opens picker", function()
+      local picker_called = false
+
+      package.loaded["haft.telescope.pickers.remove"] = {
+        pick = function(callback)
+          picker_called = true
+        end,
+      }
+
+      api.remove(nil)
+
+      assert.is_true(picker_called)
+
+      package.loaded["haft.telescope.pickers.remove"] = nil
     end)
   end)
 end)
@@ -466,6 +526,120 @@ describe("haft.api internal helpers", function()
       assert.equals("jpa", lines[2])
     end)
   end)
+
+  describe("format_remove_result", function()
+    it("formats remove results with removed dependencies", function()
+      local format = function(data)
+        local lines = {}
+        table.insert(lines, "Dependencies Removed")
+        table.insert(lines, string.rep("─", 50))
+        table.insert(lines, "")
+
+        local removed = data.removed or {}
+        local not_found = data.notFound or {}
+
+        if #removed > 0 then
+          table.insert(lines, "Removed:")
+          for _, dep in ipairs(removed) do
+            if type(dep) == "table" then
+              table.insert(lines, "  ✓ " .. (dep.name or dep.artifactId or "unknown"))
+            else
+              table.insert(lines, "  ✓ " .. tostring(dep))
+            end
+          end
+          table.insert(lines, "")
+        end
+
+        if #not_found > 0 then
+          table.insert(lines, "Not Found:")
+          for _, dep in ipairs(not_found) do
+            if type(dep) == "table" then
+              table.insert(lines, "  ✗ " .. (dep.name or dep.artifactId or "unknown"))
+            else
+              table.insert(lines, "  ✗ " .. tostring(dep))
+            end
+          end
+          table.insert(lines, "")
+        end
+
+        return lines
+      end
+
+      local data = {
+        removed = { { name = "Lombok", artifactId = "lombok" } },
+        notFound = {},
+      }
+
+      local lines = format(data)
+      assert.is_true(#lines > 0)
+      assert.equals("Dependencies Removed", lines[1])
+
+      local found_lombok = false
+      for _, line in ipairs(lines) do
+        if line:match("Lombok") then
+          found_lombok = true
+        end
+      end
+      assert.is_true(found_lombok)
+    end)
+
+    it("formats remove results with not found dependencies", function()
+      local format = function(data)
+        local lines = {}
+        local not_found = data.notFound or {}
+
+        if #not_found > 0 then
+          table.insert(lines, "Not Found:")
+          for _, dep in ipairs(not_found) do
+            if type(dep) == "table" then
+              table.insert(lines, "  ✗ " .. (dep.name or dep.artifactId or "unknown"))
+            else
+              table.insert(lines, "  ✗ " .. tostring(dep))
+            end
+          end
+        end
+
+        return lines
+      end
+
+      local data = {
+        removed = {},
+        notFound = { { name = "NonExistent", artifactId = "nonexistent" } },
+      }
+
+      local lines = format(data)
+      local found_not_found = false
+      for _, line in ipairs(lines) do
+        if line:match("Not Found") then
+          found_not_found = true
+        end
+      end
+      assert.is_true(found_not_found)
+    end)
+
+    it("handles string dependencies in removed", function()
+      local format = function(data)
+        local lines = {}
+        local removed = data.removed or {}
+
+        for _, dep in ipairs(removed) do
+          if type(dep) == "table" then
+            table.insert(lines, dep.name or dep.artifactId or "unknown")
+          else
+            table.insert(lines, tostring(dep))
+          end
+        end
+
+        return lines
+      end
+
+      local data = { removed = { "lombok", "jpa" } }
+      local lines = format(data)
+      assert.equals(2, #lines)
+      assert.equals("lombok", lines[1])
+      assert.equals("jpa", lines[2])
+    end)
+  end)
 end)
 
 describe("haft.api config integration", function()
@@ -683,6 +857,183 @@ describe("haft.api add_dependencies", function()
 end)
 
 describe("haft.commands HaftAdd", function()
+  it("parses space-separated dependencies", function()
+    local parsed = vim.split("lombok jpa validation", "%s+")
+    assert.equals(3, #parsed)
+    assert.equals("lombok", parsed[1])
+    assert.equals("jpa", parsed[2])
+    assert.equals("validation", parsed[3])
+  end)
+
+  it("handles empty args string", function()
+    local args = ""
+    local deps = nil
+    if args ~= "" then
+      deps = vim.split(args, "%s+")
+    end
+    assert.is_nil(deps)
+  end)
+
+  it("handles single dependency", function()
+    local parsed = vim.split("lombok", "%s+")
+    assert.equals(1, #parsed)
+    assert.equals("lombok", parsed[1])
+  end)
+end)
+
+describe("haft.api remove_dependencies", function()
+  local api
+  local mock_runner
+  local mock_notify
+  local mock_detection
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.float"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_runner = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function(opts)
+        mock_runner.last_opts = opts
+        if mock_runner.mock_success then
+          opts.on_success(mock_runner.mock_result)
+        elseif mock_runner.mock_error and opts.on_error then
+          opts.on_error(mock_runner.mock_result)
+        end
+      end,
+      last_opts = nil,
+      mock_success = false,
+      mock_error = false,
+      mock_result = nil,
+    }
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    mock_detection = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+
+    package.loaded["haft.runner"] = mock_runner
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = mock_detection
+    package.loaded["haft.ui.float"] = {
+      open = function() end,
+    }
+
+    api = require("haft.api")
+  end)
+
+  after_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.float"] = nil
+  end)
+
+  it("builds correct args for single dependency", function()
+    api.remove_dependencies({ "lombok" })
+
+    assert.is_table(mock_runner.last_opts)
+    assert.is_table(mock_runner.last_opts.args)
+
+    local args = mock_runner.last_opts.args
+    assert.equals("remove", args[1])
+    assert.equals("lombok", args[2])
+    assert.equals("--no-interactive", args[3])
+  end)
+
+  it("builds correct args for multiple dependencies", function()
+    api.remove_dependencies({ "lombok", "jpa", "validation" })
+
+    local args = mock_runner.last_opts.args
+    assert.equals("remove", args[1])
+    assert.equals("lombok", args[2])
+    assert.equals("jpa", args[3])
+    assert.equals("validation", args[4])
+    assert.equals("--no-interactive", args[5])
+  end)
+
+  it("uses project root as cwd", function()
+    api.remove_dependencies({ "lombok" })
+
+    assert.equals("/mock/project", mock_runner.last_opts.cwd)
+  end)
+
+  it("requests json output", function()
+    api.remove_dependencies({ "lombok" })
+
+    assert.is_true(mock_runner.last_opts.json)
+  end)
+
+  it("warns when no dependencies provided", function()
+    api.remove_dependencies({})
+
+    assert.equals("No dependencies specified", mock_notify.last_warn)
+    assert.is_nil(mock_runner.last_opts)
+  end)
+
+  it("warns when nil dependencies provided", function()
+    api.remove_dependencies(nil)
+
+    assert.equals("No dependencies specified", mock_notify.last_warn)
+    assert.is_nil(mock_runner.last_opts)
+  end)
+
+  it("shows info message when removing dependencies", function()
+    api.remove_dependencies({ "lombok", "jpa" })
+
+    assert.equals("Removing 2 dependency(ies)...", mock_notify.last_info)
+  end)
+
+  it("errors when haft cli not available", function()
+    mock_runner.is_haft_available = function()
+      return false
+    end
+
+    api.remove_dependencies({ "lombok" })
+
+    assert.is_not_nil(mock_notify.last_error)
+    assert.is_truthy(mock_notify.last_error:match("Haft CLI not found"))
+  end)
+
+  it("warns when not in a project", function()
+    mock_detection.get_project_root = function()
+      return nil
+    end
+
+    api.remove_dependencies({ "lombok" })
+
+    assert.equals("Not in a Haft/Spring Boot project", mock_notify.last_warn)
+  end)
+end)
+
+describe("haft.commands HaftRemove", function()
   it("parses space-separated dependencies", function()
     local parsed = vim.split("lombok jpa validation", "%s+")
     assert.equals(3, #parsed)

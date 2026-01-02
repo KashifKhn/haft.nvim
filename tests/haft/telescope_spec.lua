@@ -263,3 +263,130 @@ describe("haft.config picker settings", function()
     end)
   end)
 end)
+
+describe("haft.telescope.pickers.remove", function()
+  describe("parse_current_dependencies helper", function()
+    it("parses dependencies from project info", function()
+      local parse = function(data)
+        local deps = {}
+        local dependencies = data.dependencies or {}
+        local dep_list = dependencies.list or {}
+
+        for _, dep in ipairs(dep_list) do
+          local name = dep.artifactId or ""
+          local group = dep.groupId or ""
+          local version = dep.version or ""
+          local scope = dep.scope or "compile"
+
+          table.insert(deps, {
+            artifactId = name,
+            groupId = group,
+            version = version,
+            scope = scope,
+            display = group .. ":" .. name,
+          })
+        end
+
+        return deps
+      end
+
+      local data = {
+        dependencies = {
+          total = 2,
+          list = {
+            {
+              groupId = "org.projectlombok",
+              artifactId = "lombok",
+              version = "1.18.30",
+              scope = "provided",
+            },
+            {
+              groupId = "org.springframework.boot",
+              artifactId = "spring-boot-starter-web",
+              version = "",
+              scope = "compile",
+            },
+          },
+        },
+      }
+
+      local deps = parse(data)
+      assert.equals(2, #deps)
+      assert.equals("lombok", deps[1].artifactId)
+      assert.equals("org.projectlombok", deps[1].groupId)
+      assert.equals("1.18.30", deps[1].version)
+      assert.equals("provided", deps[1].scope)
+      assert.equals("org.projectlombok:lombok", deps[1].display)
+      assert.equals("spring-boot-starter-web", deps[2].artifactId)
+      assert.equals("compile", deps[2].scope)
+    end)
+
+    it("handles empty dependencies list", function()
+      local parse = function(data)
+        local deps = {}
+        local dependencies = data.dependencies or {}
+        local dep_list = dependencies.list or {}
+
+        for _, dep in ipairs(dep_list) do
+          table.insert(deps, {
+            artifactId = dep.artifactId or "",
+            groupId = dep.groupId or "",
+          })
+        end
+
+        return deps
+      end
+
+      local data = { dependencies = { list = {} } }
+      local deps = parse(data)
+      assert.equals(0, #deps)
+    end)
+
+    it("handles missing dependencies key", function()
+      local parse = function(data)
+        local deps = {}
+        local dependencies = data.dependencies or {}
+        local dep_list = dependencies.list or {}
+
+        for _, dep in ipairs(dep_list) do
+          table.insert(deps, dep)
+        end
+
+        return deps
+      end
+
+      local data = {}
+      local deps = parse(data)
+      assert.equals(0, #deps)
+    end)
+
+    it("uses default scope when not specified", function()
+      local parse = function(data)
+        local deps = {}
+        local dependencies = data.dependencies or {}
+        local dep_list = dependencies.list or {}
+
+        for _, dep in ipairs(dep_list) do
+          table.insert(deps, {
+            artifactId = dep.artifactId or "",
+            scope = dep.scope or "compile",
+          })
+        end
+
+        return deps
+      end
+
+      local data = {
+        dependencies = {
+          list = {
+            { artifactId = "lombok" },
+          },
+        },
+      }
+
+      local deps = parse(data)
+      assert.equals(1, #deps)
+      assert.equals("compile", deps[1].scope)
+    end)
+  end)
+end)

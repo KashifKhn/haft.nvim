@@ -52,6 +52,14 @@ function M.setup()
     end
     api.add(deps)
   end, { nargs = "*", desc = "Add dependencies (opens picker if no args)" })
+
+  vim.api.nvim_create_user_command("HaftRemove", function(opts)
+    local deps = nil
+    if opts.args ~= "" then
+      deps = vim.split(opts.args, "%s+")
+    end
+    api.remove(deps)
+  end, { nargs = "*", desc = "Remove dependencies (opens picker if no args)" })
 end
 
 return M
