@@ -1057,3 +1057,187 @@ describe("haft.commands HaftRemove", function()
     assert.equals("lombok", parsed[1])
   end)
 end)
+
+describe("haft.api dev functions exist", function()
+  local api
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    api = require("haft.api")
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+  end)
+
+  it("has serve function", function()
+    assert.is_function(api.serve)
+  end)
+
+  it("has serve_stop function", function()
+    assert.is_function(api.serve_stop)
+  end)
+
+  it("has serve_toggle function", function()
+    assert.is_function(api.serve_toggle)
+  end)
+
+  it("has build function", function()
+    assert.is_function(api.build)
+  end)
+
+  it("has test function", function()
+    assert.is_function(api.test)
+  end)
+
+  it("has clean function", function()
+    assert.is_function(api.clean)
+  end)
+
+  it("has deps function", function()
+    assert.is_function(api.deps)
+  end)
+
+  it("has outdated function", function()
+    assert.is_function(api.outdated)
+  end)
+end)
+
+describe("haft.config terminal settings", function()
+  local config
+
+  before_each(function()
+    package.loaded["haft.config"] = nil
+    config = require("haft.config")
+    config.reset()
+  end)
+
+  describe("terminal config", function()
+    it("default type is auto", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals("auto", cfg.terminal.type)
+    end)
+
+    it("default persist is true", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_true(cfg.terminal.persist)
+    end)
+
+    it("default auto_close is false", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_false(cfg.terminal.auto_close)
+    end)
+
+    it("has float config with defaults", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals("rounded", cfg.terminal.float.border)
+      assert.equals(0.8, cfg.terminal.float.width)
+      assert.equals(0.8, cfg.terminal.float.height)
+    end)
+
+    it("has split config with defaults", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals(15, cfg.terminal.split.size)
+      assert.equals("below", cfg.terminal.split.position)
+    end)
+
+    it("can configure terminal type", function()
+      config.setup({ terminal = { type = "float" } })
+      local cfg = config.get()
+      assert.equals("float", cfg.terminal.type)
+    end)
+
+    it("can configure split size", function()
+      config.setup({ terminal = { split = { size = 20 } } })
+      local cfg = config.get()
+      assert.equals(20, cfg.terminal.split.size)
+    end)
+  end)
+
+  describe("dev config", function()
+    it("default restart_on_save is false", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_false(cfg.dev.restart_on_save)
+    end)
+
+    it("has default save_patterns", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_table(cfg.dev.save_patterns)
+      assert.is_true(#cfg.dev.save_patterns > 0)
+    end)
+  end)
+end)
+
+describe("haft.ui.terminal", function()
+  local terminal
+
+  before_each(function()
+    package.loaded["haft.ui.terminal"] = nil
+    package.loaded["haft.config"] = nil
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+    terminal = require("haft.ui.terminal")
+  end)
+
+  describe("module structure", function()
+    it("has open function", function()
+      assert.is_function(terminal.open)
+    end)
+
+    it("has close function", function()
+      assert.is_function(terminal.close)
+    end)
+
+    it("has toggle function", function()
+      assert.is_function(terminal.toggle)
+    end)
+
+    it("has is_running function", function()
+      assert.is_function(terminal.is_running)
+    end)
+
+    it("has stop function", function()
+      assert.is_function(terminal.stop)
+    end)
+
+    it("has send function", function()
+      assert.is_function(terminal.send)
+    end)
+
+    it("has close_all function", function()
+      assert.is_function(terminal.close_all)
+    end)
+  end)
+
+  describe("terminal state", function()
+    it("is_running returns false for non-existent terminal", function()
+      assert.is_false(terminal.is_running("nonexistent"))
+    end)
+
+    it("close handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.close("nonexistent")
+      end)
+    end)
+
+    it("stop handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.stop("nonexistent")
+      end)
+    end)
+
+    it("send handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.send("nonexistent", "data")
+      end)
+    end)
+  end)
+end)

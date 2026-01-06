@@ -60,6 +60,38 @@ function M.setup()
     end
     api.remove(deps)
   end, { nargs = "*", desc = "Remove dependencies (opens picker if no args)" })
+
+  vim.api.nvim_create_user_command("HaftServe", function()
+    api.serve()
+  end, { desc = "Start dev server with hot-reload" })
+
+  vim.api.nvim_create_user_command("HaftServeStop", function()
+    api.serve_stop()
+  end, { desc = "Stop the dev server" })
+
+  vim.api.nvim_create_user_command("HaftServeToggle", function()
+    api.serve_toggle()
+  end, { desc = "Toggle dev server terminal visibility" })
+
+  vim.api.nvim_create_user_command("HaftBuild", function()
+    api.build()
+  end, { desc = "Build the project" })
+
+  vim.api.nvim_create_user_command("HaftTest", function()
+    api.test()
+  end, { desc = "Run tests" })
+
+  vim.api.nvim_create_user_command("HaftClean", function()
+    api.clean()
+  end, { desc = "Clean build artifacts" })
+
+  vim.api.nvim_create_user_command("HaftDeps", function()
+    api.deps()
+  end, { desc = "Display dependency tree" })
+
+  vim.api.nvim_create_user_command("HaftOutdated", function()
+    api.outdated()
+  end, { desc = "Check for dependency updates" })
 end
 
 return M

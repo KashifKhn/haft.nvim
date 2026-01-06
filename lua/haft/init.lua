@@ -93,4 +93,44 @@ function M.remove(deps)
   api.remove(deps)
 end
 
+function M.serve()
+  local api = require("haft.api")
+  api.serve()
+end
+
+function M.serve_stop()
+  local api = require("haft.api")
+  api.serve_stop()
+end
+
+function M.serve_toggle()
+  local api = require("haft.api")
+  api.serve_toggle()
+end
+
+function M.build()
+  local api = require("haft.api")
+  api.build()
+end
+
+function M.test()
+  local api = require("haft.api")
+  api.test()
+end
+
+function M.clean()
+  local api = require("haft.api")
+  api.clean()
+end
+
+function M.deps()
+  local api = require("haft.api")
+  api.deps()
+end
+
+function M.outdated()
+  local api = require("haft.api")
+  api.outdated()
+end
+
 return M

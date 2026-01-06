@@ -765,4 +765,66 @@ function M.remove(deps)
   end
 end
 
+local function run_dev_command(cmd, title, terminal_id)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local terminal = require("haft.ui.terminal")
+  local cfg = config.get()
+
+  terminal.open(terminal_id, {
+    cmd = cfg.haft_path,
+    args = { "dev", cmd },
+    cwd = root,
+    title = title,
+  })
+end
+
+function M.serve()
+  run_dev_command("serve", "Haft Dev Server", "haft_serve")
+end
+
+function M.serve_stop()
+  local terminal = require("haft.ui.terminal")
+  if terminal.is_running("haft_serve") then
+    terminal.stop("haft_serve")
+    notify.info("Dev server stopped")
+  else
+    notify.warn("Dev server is not running")
+  end
+end
+
+function M.serve_toggle()
+  local terminal = require("haft.ui.terminal")
+  terminal.toggle("haft_serve")
+end
+
+function M.build()
+  run_dev_command("build", "Haft Build", "haft_build")
+end
+
+function M.test()
+  run_dev_command("test", "Haft Test", "haft_test")
+end
+
+function M.clean()
+  run_dev_command("clean", "Haft Clean", "haft_clean")
+end
+
+function M.deps()
+  run_dev_command("deps", "Haft Dependencies", "haft_deps")
+end
+
+function M.outdated()
+  run_dev_command("outdated", "Haft Outdated", "haft_outdated")
+end
+
 return M
