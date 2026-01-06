@@ -1101,6 +1101,143 @@ describe("haft.api dev functions exist", function()
   it("has outdated function", function()
     assert.is_function(api.outdated)
   end)
+
+  it("has restart function", function()
+    assert.is_function(api.restart)
+  end)
+end)
+
+describe("haft.api restart function", function()
+  local api
+  local mock_runner
+  local mock_notify
+  local mock_detection
+  local mock_terminal
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_runner = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function(opts)
+        mock_runner.last_opts = opts
+        if mock_runner.mock_success then
+          opts.on_success(mock_runner.mock_result)
+        elseif mock_runner.mock_error and opts.on_error then
+          opts.on_error(mock_runner.mock_result)
+        end
+      end,
+      last_opts = nil,
+      mock_success = false,
+      mock_error = false,
+      mock_result = nil,
+    }
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    mock_detection = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+
+    mock_terminal = {
+      is_running = function(name)
+        return mock_terminal.mock_is_running
+      end,
+      mock_is_running = true,
+    }
+
+    package.loaded["haft.runner"] = mock_runner
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = mock_detection
+    package.loaded["haft.ui.terminal"] = mock_terminal
+
+    api = require("haft.api")
+  end)
+
+  it("warns when haft CLI is not available", function()
+    mock_runner.is_haft_available = function()
+      return false
+    end
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_error, "Haft CLI not found"))
+  end)
+
+  it("warns when not in a haft project", function()
+    mock_detection.get_project_root = function()
+      return nil
+    end
+
+    api.restart()
+
+    assert.equals("Not in a Haft/Spring Boot project", mock_notify.last_warn)
+  end)
+
+  it("warns when dev server is not running", function()
+    mock_terminal.mock_is_running = false
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_warn, "Dev server is not running"))
+  end)
+
+  it("triggers restart when server is running", function()
+    mock_runner.mock_success = true
+    mock_runner.mock_result = { output = "" }
+
+    api.restart()
+
+    assert.is_not_nil(mock_runner.last_opts)
+    assert.equals("dev", mock_runner.last_opts.args[1])
+    assert.equals("restart", mock_runner.last_opts.args[2])
+    assert.equals("/mock/project", mock_runner.last_opts.cwd)
+    assert.is_false(mock_runner.last_opts.json)
+  end)
+
+  it("shows success notification on successful restart", function()
+    mock_runner.mock_success = true
+    mock_runner.mock_result = { output = "" }
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_info, "restart"))
+  end)
+
+  it("shows error notification on failed restart", function()
+    mock_runner.mock_error = true
+    mock_runner.mock_result = { output = "Failed to create trigger file" }
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_error, "Failed to trigger restart"))
+  end)
 end)
 
 describe("haft.config terminal settings", function()

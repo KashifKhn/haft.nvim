@@ -807,6 +807,39 @@ function M.serve_toggle()
   terminal.toggle("haft_serve")
 end
 
+function M.restart()
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local terminal = require("haft.ui.terminal")
+  if not terminal.is_running("haft_serve") then
+    notify.warn("Dev server is not running. Start it with :HaftServe first")
+    return
+  end
+
+  notify.info("Triggering dev server restart...")
+
+  runner.run({
+    args = { "dev", "restart" },
+    cwd = root,
+    json = false,
+    on_success = function(result)
+      notify.info("Dev server restart triggered")
+    end,
+    on_error = function(result)
+      notify.error("Failed to trigger restart: " .. result.output)
+    end,
+  })
+end
+
 function M.build()
   run_dev_command("build", "Haft Build", "haft_build")
 end

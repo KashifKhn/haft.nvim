@@ -73,6 +73,10 @@ function M.setup()
     api.serve_toggle()
   end, { desc = "Toggle dev server terminal visibility" })
 
+  vim.api.nvim_create_user_command("HaftRestart", function()
+    api.restart()
+  end, { desc = "Restart the dev server" })
+
   vim.api.nvim_create_user_command("HaftBuild", function()
     api.build()
   end, { desc = "Build the project" })

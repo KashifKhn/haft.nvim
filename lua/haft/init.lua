@@ -108,6 +108,11 @@ function M.serve_toggle()
   api.serve_toggle()
 end
 
+function M.restart()
+  local api = require("haft.api")
+  api.restart()
+end
+
 function M.build()
   local api = require("haft.api")
   api.build()
