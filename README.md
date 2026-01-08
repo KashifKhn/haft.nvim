@@ -51,7 +51,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftAdd", "HaftRemove",
     "HaftGenerateResource", "HaftGenerateController",
     "HaftGenerateService", "HaftGenerateRepository", "HaftGenerateEntity",
-    "HaftGenerateDto",
+    "HaftGenerateDto", "HaftGenerateException", "HaftGenerateConfig", "HaftGenerateSecurity",
     "HaftServe", "HaftServeStop", "HaftServeToggle", "HaftRestart",
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
     "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
@@ -244,6 +244,9 @@ require("haft").setup({
 | `:HaftGenerateRepository [name]` | Generate JPA repository |
 | `:HaftGenerateEntity [name]` | Generate JPA entity |
 | `:HaftGenerateDto [name]` | Generate Request/Response DTOs |
+| `:HaftGenerateException [all]` | Generate global exception handler |
+| `:HaftGenerateConfig [all]` | Generate configuration classes (CORS, OpenAPI, etc.) |
+| `:HaftGenerateSecurity [type]` | Generate security configuration (jwt/session/oauth2/all) |
 
 ### Development Commands
 
@@ -298,6 +301,9 @@ vim.keymap.set("n", "<leader>hgr", "<cmd>HaftGenerateResource<cr>", { desc = "Ha
 vim.keymap.set("n", "<leader>hgc", "<cmd>HaftGenerateController<cr>", { desc = "Haft: Generate controller" })
 vim.keymap.set("n", "<leader>hgs", "<cmd>HaftGenerateService<cr>", { desc = "Haft: Generate service" })
 vim.keymap.set("n", "<leader>hge", "<cmd>HaftGenerateEntity<cr>", { desc = "Haft: Generate entity" })
+vim.keymap.set("n", "<leader>hgx", "<cmd>HaftGenerateException<cr>", { desc = "Haft: Generate exception handler" })
+vim.keymap.set("n", "<leader>hgC", "<cmd>HaftGenerateConfig<cr>", { desc = "Haft: Generate config" })
+vim.keymap.set("n", "<leader>hgS", "<cmd>HaftGenerateSecurity<cr>", { desc = "Haft: Generate security" })
 
 vim.keymap.set("n", "<leader>hb", "<cmd>HaftBuild<cr>", { desc = "Haft: Build" })
 vim.keymap.set("n", "<leader>ht", "<cmd>HaftTest<cr>", { desc = "Haft: Test" })
@@ -350,6 +356,9 @@ haft.generate_service(name)
 haft.generate_repository(name)
 haft.generate_entity(name)
 haft.generate_dto(name)
+haft.generate_exception(opts) -- opts: {all=true} or {no_interactive=true}
+haft.generate_config(opts)    -- opts: {all=true} or {no_interactive=true}
+haft.generate_security(opts)  -- opts: {jwt=true}, {session=true}, {oauth2=true}, or {all=true}
 
 -- Development commands
 haft.serve()                -- Start dev server

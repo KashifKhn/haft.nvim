@@ -84,6 +84,24 @@ function M.generate_dto(name)
   api.generate_dto(name)
 end
 
+---@param opts table?
+function M.generate_exception(opts)
+  local api = require("haft.api")
+  api.generate_exception(opts)
+end
+
+---@param opts table?
+function M.generate_config(opts)
+  local api = require("haft.api")
+  api.generate_config(opts)
+end
+
+---@param opts table?
+function M.generate_security(opts)
+  local api = require("haft.api")
+  api.generate_security(opts)
+end
+
 ---@param deps string[]?
 function M.add(deps)
   local api = require("haft.api")

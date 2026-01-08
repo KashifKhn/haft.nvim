@@ -45,6 +45,43 @@ function M.setup()
     api.generate_dto(name)
   end, { nargs = "?", desc = "Generate request/response DTOs" })
 
+  vim.api.nvim_create_user_command("HaftGenerateException", function(opts)
+    local args = opts.args
+    if args == "all" then
+      api.generate_exception({ all = true })
+    elseif args == "default" or args == "defaults" then
+      api.generate_exception({ no_interactive = true })
+    else
+      api.generate_exception({})
+    end
+  end, { nargs = "?", desc = "Generate global exception handler" })
+
+  vim.api.nvim_create_user_command("HaftGenerateConfig", function(opts)
+    local args = opts.args
+    if args == "all" then
+      api.generate_config({ all = true })
+    elseif args == "default" or args == "defaults" then
+      api.generate_config({ no_interactive = true })
+    else
+      api.generate_config({})
+    end
+  end, { nargs = "?", desc = "Generate configuration classes" })
+
+  vim.api.nvim_create_user_command("HaftGenerateSecurity", function(opts)
+    local args = opts.args
+    if args == "jwt" then
+      api.generate_security({ jwt = true })
+    elseif args == "session" then
+      api.generate_security({ session = true })
+    elseif args == "oauth2" then
+      api.generate_security({ oauth2 = true })
+    elseif args == "all" then
+      api.generate_security({ all = true })
+    else
+      api.generate_security({})
+    end
+  end, { nargs = "?", desc = "Generate security configuration" })
+
   vim.api.nvim_create_user_command("HaftAdd", function(opts)
     local deps = nil
     if opts.args ~= "" then

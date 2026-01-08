@@ -527,6 +527,210 @@ function M.generate_dto(name)
   run_generate("dto", "dto", name)
 end
 
+---@param opts table?
+function M.generate_exception(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local args = { "generate", "exception" }
+
+  if opts.all then
+    table.insert(args, "--all")
+  elseif opts.no_interactive then
+    table.insert(args, "--no-interactive")
+  end
+
+  notify.info("Generating exception handler...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local total = data.totalGenerated or 0
+
+        if total > 0 then
+          notify.info(string.format("Generated %d exception file(s)", total))
+          local files = collect_generated_files(data, root)
+          add_to_quickfix(files)
+          auto_open_files(files)
+        else
+          notify.warn("No files were generated")
+        end
+
+        local lines = format_generate_result(data)
+        float.open(lines, { title = "Haft Generate Exception" })
+      else
+        notify.info("Exception handler generated")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to generate exception handler: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.generate_config(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local args = { "generate", "config" }
+
+  if opts.all then
+    table.insert(args, "--all")
+  elseif opts.no_interactive then
+    table.insert(args, "--no-interactive")
+  end
+
+  notify.info("Generating configuration classes...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local total = data.totalGenerated or 0
+
+        if total > 0 then
+          notify.info(string.format("Generated %d config file(s)", total))
+          local files = collect_generated_files(data, root)
+          add_to_quickfix(files)
+          auto_open_files(files)
+        else
+          notify.warn("No files were generated")
+        end
+
+        local lines = format_generate_result(data)
+        float.open(lines, { title = "Haft Generate Config" })
+      else
+        notify.info("Configuration classes generated")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to generate config: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.generate_security(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local function execute(auth_type)
+    local args = { "generate", "security" }
+
+    if auth_type == "all" then
+      table.insert(args, "--all")
+    elseif auth_type == "jwt" then
+      table.insert(args, "--jwt")
+    elseif auth_type == "session" then
+      table.insert(args, "--session")
+    elseif auth_type == "oauth2" then
+      table.insert(args, "--oauth2")
+    end
+
+    table.insert(args, "--no-interactive")
+
+    notify.info("Generating security configuration...")
+
+    runner.run({
+      args = args,
+      cwd = root,
+      json = true,
+      on_success = function(result)
+        if result.data then
+          local data = unwrap_response(result.data)
+          local total = data.totalGenerated or 0
+
+          if total > 0 then
+            notify.info(string.format("Generated %d security file(s)", total))
+            local files = collect_generated_files(data, root)
+            add_to_quickfix(files)
+            auto_open_files(files)
+          else
+            notify.warn("No files were generated")
+          end
+
+          local lines = format_generate_result(data)
+          float.open(lines, { title = "Haft Generate Security" })
+        else
+          notify.info("Security configuration generated")
+        end
+      end,
+      on_error = function(result)
+        notify.error("Failed to generate security: " .. result.output)
+      end,
+    })
+  end
+
+  if opts.jwt then
+    execute("jwt")
+  elseif opts.session then
+    execute("session")
+  elseif opts.oauth2 then
+    execute("oauth2")
+  elseif opts.all then
+    execute("all")
+  else
+    local auth_types = {
+      { id = "jwt", name = "JWT Authentication", desc = "Stateless token-based (recommended for APIs)" },
+      { id = "session", name = "Session Authentication", desc = "Traditional session-based (for web apps)" },
+      { id = "oauth2", name = "OAuth2 Authentication", desc = "OAuth2/OpenID Connect (Google, GitHub, etc.)" },
+      { id = "all", name = "All Types", desc = "Generate all authentication configurations" },
+    }
+
+    local items = {}
+    for _, auth in ipairs(auth_types) do
+      table.insert(items, auth.name .. " - " .. auth.desc)
+    end
+
+    vim.ui.select(items, {
+      prompt = "Select authentication type:",
+    }, function(choice, idx)
+      if not choice then
+        return
+      end
+      execute(auth_types[idx].id)
+    end)
+  end
+end
+
 ---@param data table
 ---@return string[]
 local function format_add_result(data)
