@@ -958,4 +958,227 @@ function M._init_auto_restart()
   end
 end
 
+local function handle_post_create(project_path, project_name)
+  local cfg = config.get()
+
+  if cfg.init.after_create == "prompt" then
+    local options = {
+      "Open in current window",
+      "Open in new tab",
+      "Just notify (do nothing)",
+    }
+
+    vim.ui.select(options, {
+      prompt = "Project created! What would you like to do?",
+    }, function(choice, idx)
+      if not choice then
+        return
+      end
+
+      if idx == 1 then
+        vim.cmd("cd " .. vim.fn.fnameescape(project_path))
+        vim.cmd("edit .")
+        notify.info("Opened project: " .. project_name)
+      elseif idx == 2 then
+        vim.cmd("tabnew")
+        vim.cmd("tcd " .. vim.fn.fnameescape(project_path))
+        vim.cmd("edit .")
+        notify.info("Opened project in new tab: " .. project_name)
+      else
+        notify.info("Project created at: " .. project_path)
+      end
+    end)
+  elseif cfg.init.after_create == "cd" then
+    vim.cmd("cd " .. vim.fn.fnameescape(project_path))
+    if cfg.init.auto_open then
+      vim.cmd("edit .")
+    end
+    notify.info("Changed to project: " .. project_name)
+  elseif cfg.init.after_create == "tab" then
+    vim.cmd("tabnew")
+    vim.cmd("tcd " .. vim.fn.fnameescape(project_path))
+    if cfg.init.auto_open then
+      vim.cmd("edit .")
+    end
+    notify.info("Opened project in new tab: " .. project_name)
+  else
+    notify.info("Project created at: " .. project_path)
+  end
+end
+
+function M.init(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local cfg = config.get()
+  local mode = opts.mode or cfg.init.default_mode
+
+  if mode == "tui" then
+    M.init_tui()
+  elseif mode == "wizard" then
+    M.init_wizard()
+  elseif mode == "quick" then
+    M.init_quick(opts)
+  else
+    M.init_picker()
+  end
+end
+
+function M.init_picker()
+  local modes = {
+    { id = "tui", name = "TUI Wizard", desc = "Full interactive CLI experience (recommended)" },
+    { id = "wizard", name = "Neovim Wizard", desc = "Step-by-step native Neovim prompts" },
+    { id = "quick", name = "Quick Create", desc = "Create with defaults (prompts for name only)" },
+  }
+
+  local items = {}
+  for _, mode in ipairs(modes) do
+    table.insert(items, mode.name .. " - " .. mode.desc)
+  end
+
+  vim.ui.select(items, {
+    prompt = "How would you like to create your project?",
+  }, function(choice, idx)
+    if not choice then
+      return
+    end
+
+    local selected = modes[idx]
+    if selected.id == "tui" then
+      M.init_tui()
+    elseif selected.id == "wizard" then
+      M.init_wizard()
+    elseif selected.id == "quick" then
+      M.init_quick({})
+    end
+  end)
+end
+
+function M.init_tui()
+  local terminal = require("haft.ui.terminal")
+
+  terminal.open("haft_init", "haft init", {
+    type = "float",
+    float = {
+      width = 0.9,
+      height = 0.9,
+      border = "rounded",
+    },
+    on_exit = function(code)
+      if code == 0 then
+        notify.info("Project initialization completed!")
+      end
+    end,
+  })
+end
+
+function M.init_wizard()
+  local wizard = require("haft.ui.wizard")
+  local steps = wizard.get_init_steps()
+
+  wizard.run(steps, function(results)
+    if not results.name or results.name == "" then
+      notify.warn("Project name is required")
+      return
+    end
+
+    local args = wizard.build_init_command(results)
+    local dir = results.directory or "."
+    local project_path = dir == "." and vim.fn.getcwd() .. "/" .. results.name
+      or vim.fn.expand(dir) .. "/" .. results.name
+
+    notify.info("Creating project: " .. results.name .. "...")
+
+    runner.run({
+      args = args,
+      cwd = dir == "." and vim.fn.getcwd() or vim.fn.expand(dir),
+      json = true,
+      on_success = function(result)
+        vim.schedule(function()
+          handle_post_create(project_path, results.name)
+        end)
+      end,
+      on_error = function(result)
+        notify.error("Failed to create project: " .. (result.output or "Unknown error"))
+      end,
+    })
+  end, function()
+    notify.info("Project creation cancelled")
+  end)
+end
+
+function M.init_quick(opts)
+  opts = opts or {}
+
+  local function create_project(name)
+    if not name or name == "" then
+      notify.warn("Project name is required")
+      return
+    end
+
+    local cfg = config.get()
+    local defaults = cfg.init.defaults
+
+    local args = {
+      "init",
+      name,
+      "--no-interactive",
+      "--json",
+      "--group",
+      opts.group or defaults.group,
+      "--java",
+      opts.java or defaults.java,
+      "--build",
+      opts.build or defaults.build,
+      "--packaging",
+      opts.packaging or defaults.packaging,
+      "--config",
+      opts.config_format or defaults.config_format,
+    }
+
+    if opts.deps and #opts.deps > 0 then
+      table.insert(args, "--deps")
+      table.insert(args, table.concat(opts.deps, ","))
+    end
+
+    local dir = opts.dir or "."
+    local project_path = dir == "." and vim.fn.getcwd() .. "/" .. name or vim.fn.expand(dir) .. "/" .. name
+
+    if dir ~= "." then
+      table.insert(args, "--dir")
+      table.insert(args, vim.fn.expand(dir))
+    end
+
+    notify.info("Creating project: " .. name .. "...")
+
+    runner.run({
+      args = args,
+      cwd = vim.fn.getcwd(),
+      json = true,
+      on_success = function(result)
+        vim.schedule(function()
+          handle_post_create(project_path, name)
+        end)
+      end,
+      on_error = function(result)
+        notify.error("Failed to create project: " .. (result.output or "Unknown error"))
+      end,
+    })
+  end
+
+  if opts.name then
+    create_project(opts.name)
+  else
+    vim.ui.input({ prompt = "Project name: " }, function(name)
+      if name and name ~= "" then
+        create_project(name)
+      end
+    end)
+  end
+end
+
 return M

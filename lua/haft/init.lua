@@ -162,4 +162,26 @@ function M.is_auto_restart_enabled()
   return api.is_auto_restart_enabled()
 end
 
+---@param opts table?
+function M.init(opts)
+  local api = require("haft.api")
+  api.init(opts)
+end
+
+function M.init_tui()
+  local api = require("haft.api")
+  api.init_tui()
+end
+
+function M.init_wizard()
+  local api = require("haft.api")
+  api.init_wizard()
+end
+
+---@param opts table?
+function M.init_quick(opts)
+  local api = require("haft.api")
+  api.init_quick(opts)
+end
+
 return M

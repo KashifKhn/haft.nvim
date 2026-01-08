@@ -108,6 +108,32 @@ function M.setup()
   vim.api.nvim_create_user_command("HaftAutoRestartToggle", function()
     api.toggle_auto_restart()
   end, { desc = "Toggle auto-restart on file save" })
+
+  vim.api.nvim_create_user_command("HaftInit", function(opts)
+    local args = opts.args
+    if args == "" then
+      api.init()
+    elseif args == "tui" then
+      api.init_tui()
+    elseif args == "wizard" then
+      api.init_wizard()
+    else
+      api.init_quick({ name = args })
+    end
+  end, { nargs = "?", desc = "Initialize a new Spring Boot project" })
+
+  vim.api.nvim_create_user_command("HaftInitTui", function()
+    api.init_tui()
+  end, { desc = "Initialize project with TUI wizard" })
+
+  vim.api.nvim_create_user_command("HaftInitWizard", function()
+    api.init_wizard()
+  end, { desc = "Initialize project with Neovim wizard" })
+
+  vim.api.nvim_create_user_command("HaftInitQuick", function(opts)
+    local name = opts.args ~= "" and opts.args or nil
+    api.init_quick({ name = name })
+  end, { nargs = "?", desc = "Initialize project with defaults (quick mode)" })
 end
 
 return M

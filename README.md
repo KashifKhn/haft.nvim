@@ -55,6 +55,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftServe", "HaftServeStop", "HaftServeToggle", "HaftRestart",
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
     "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
+    "HaftInit", "HaftInitTui", "HaftInitWizard", "HaftInitQuick",
   },
   opts = {},
 }
@@ -158,6 +159,22 @@ require("haft").setup({
     save_patterns = { "*.java", "*.kt", "*.xml", "*.yaml", "*.yml", "*.properties" },
   },
 
+  -- Init settings (project creation)
+  init = {
+    default_mode = "tui",      -- "tui", "wizard", "quick"
+    after_create = "prompt",   -- "prompt", "cd", "tab", "notify"
+    auto_cd = true,            -- Auto cd into new project
+    auto_open = true,          -- Auto open in editor
+    defaults = {
+      group = "com.example",
+      java = "21",
+      spring = nil,            -- Use latest
+      build = "maven",
+      packaging = "jar",
+      config_format = "yaml",
+    },
+  },
+
   -- Command settings
   commands = {
     generate = {
@@ -189,6 +206,18 @@ require("haft").setup({
 | `"tab"` | New tab |
 
 ## Commands
+
+### Project Initialization
+
+| Command | Description |
+|---------|-------------|
+| `:HaftInit` | Initialize new project (opens mode picker) |
+| `:HaftInit tui` | Initialize with TUI wizard (LazyGit-style) |
+| `:HaftInit wizard` | Initialize with Neovim native wizard |
+| `:HaftInit <name>` | Quick create project with given name |
+| `:HaftInitTui` | Direct TUI wizard mode |
+| `:HaftInitWizard` | Direct Neovim wizard mode |
+| `:HaftInitQuick [name]` | Quick create with defaults |
 
 ### Project Information
 
@@ -278,6 +307,9 @@ vim.keymap.set("n", "<leader>hT", "<cmd>HaftServeToggle<cr>", { desc = "Haft: To
 vim.keymap.set("n", "<leader>hc", "<cmd>HaftClean<cr>", { desc = "Haft: Clean" })
 vim.keymap.set("n", "<leader>hd", "<cmd>HaftDeps<cr>", { desc = "Haft: Deps tree" })
 vim.keymap.set("n", "<leader>ho", "<cmd>HaftOutdated<cr>", { desc = "Haft: Outdated deps" })
+
+vim.keymap.set("n", "<leader>hn", "<cmd>HaftInit<cr>", { desc = "Haft: New project" })
+vim.keymap.set("n", "<leader>hN", "<cmd>HaftInitWizard<cr>", { desc = "Haft: New project (wizard)" })
 ```
 
 ### With which-key.nvim
@@ -335,6 +367,12 @@ haft.enable_auto_restart()  -- Enable auto-restart
 haft.disable_auto_restart() -- Disable auto-restart
 haft.toggle_auto_restart()  -- Toggle auto-restart
 haft.is_auto_restart_enabled() -- Check if enabled
+
+-- Project initialization
+haft.init(opts)             -- Open mode picker or use opts.mode
+haft.init_tui()             -- TUI wizard (LazyGit-style terminal)
+haft.init_wizard()          -- Neovim native step-by-step wizard
+haft.init_quick(opts)       -- Quick create with defaults
 ```
 
 ## User Events
