@@ -1240,6 +1240,198 @@ describe("haft.api restart function", function()
   end)
 end)
 
+describe("haft.api auto-restart functions", function()
+  local api
+  local mock_notify
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    api = require("haft.api")
+  end)
+
+  it("has enable_auto_restart function", function()
+    assert.is_function(api.enable_auto_restart)
+  end)
+
+  it("has disable_auto_restart function", function()
+    assert.is_function(api.disable_auto_restart)
+  end)
+
+  it("has toggle_auto_restart function", function()
+    assert.is_function(api.toggle_auto_restart)
+  end)
+
+  it("has is_auto_restart_enabled function", function()
+    assert.is_function(api.is_auto_restart_enabled)
+  end)
+
+  it("auto-restart is disabled by default", function()
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enable_auto_restart enables auto-restart", function()
+    api.enable_auto_restart()
+    assert.is_true(api.is_auto_restart_enabled())
+    assert.is_not_nil(string.find(mock_notify.last_info, "enabled"))
+    api.disable_auto_restart()
+  end)
+
+  it("disable_auto_restart disables auto-restart", function()
+    api.enable_auto_restart()
+    api.disable_auto_restart()
+    assert.is_false(api.is_auto_restart_enabled())
+    assert.is_not_nil(string.find(mock_notify.last_info, "disabled"))
+  end)
+
+  it("toggle_auto_restart toggles state", function()
+    assert.is_false(api.is_auto_restart_enabled())
+    api.toggle_auto_restart()
+    assert.is_true(api.is_auto_restart_enabled())
+    api.toggle_auto_restart()
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enable does nothing if already enabled", function()
+    api.enable_auto_restart()
+    mock_notify.last_info = nil
+    api.enable_auto_restart()
+    assert.is_nil(mock_notify.last_info)
+    api.disable_auto_restart()
+  end)
+
+  it("disable does nothing if already disabled", function()
+    mock_notify.last_info = nil
+    api.disable_auto_restart()
+    assert.is_nil(mock_notify.last_info)
+  end)
+end)
+
+describe("haft.api auto-restart config initialization", function()
+  it("does not enable auto-restart when restart_on_save is false", function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({ dev = { restart_on_save = false } })
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = {
+      info = function() end,
+      warn = function() end,
+      error = function() end,
+    }
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    local api = require("haft.api")
+    api._init_auto_restart()
+
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enables auto-restart when restart_on_save is true", function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({ dev = { restart_on_save = true } })
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = {
+      info = function() end,
+      warn = function() end,
+      error = function() end,
+    }
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    local api = require("haft.api")
+    api._init_auto_restart()
+
+    assert.is_true(api.is_auto_restart_enabled())
+    api.disable_auto_restart()
+  end)
+end)
+
 describe("haft.config terminal settings", function()
   local config
 

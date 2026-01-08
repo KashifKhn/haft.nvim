@@ -96,6 +96,18 @@ function M.setup()
   vim.api.nvim_create_user_command("HaftOutdated", function()
     api.outdated()
   end, { desc = "Check for dependency updates" })
+
+  vim.api.nvim_create_user_command("HaftAutoRestartEnable", function()
+    api.enable_auto_restart()
+  end, { desc = "Enable auto-restart on file save" })
+
+  vim.api.nvim_create_user_command("HaftAutoRestartDisable", function()
+    api.disable_auto_restart()
+  end, { desc = "Disable auto-restart on file save" })
+
+  vim.api.nvim_create_user_command("HaftAutoRestartToggle", function()
+    api.toggle_auto_restart()
+  end, { desc = "Toggle auto-restart on file save" })
 end
 
 return M

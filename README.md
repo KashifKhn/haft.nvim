@@ -54,6 +54,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftGenerateDto",
     "HaftServe", "HaftServeStop", "HaftServeToggle", "HaftRestart",
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
+    "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
   },
   opts = {},
 }
@@ -229,6 +230,14 @@ require("haft").setup({
 | `:HaftDeps` | Display dependency tree (runs in terminal) |
 | `:HaftOutdated` | Check for dependency updates (runs in terminal) |
 
+### Auto-Restart on Save
+
+| Command | Description |
+|---------|-------------|
+| `:HaftAutoRestartEnable` | Enable auto-restart on file save |
+| `:HaftAutoRestartDisable` | Disable auto-restart on file save |
+| `:HaftAutoRestartToggle` | Toggle auto-restart on file save |
+
 ## Telescope Extension
 
 ```vim
@@ -320,6 +329,12 @@ haft.test()                 -- Run tests
 haft.clean()                -- Clean build
 haft.deps()                 -- Show dependency tree
 haft.outdated()             -- Check for updates
+
+-- Auto-restart on save
+haft.enable_auto_restart()  -- Enable auto-restart
+haft.disable_auto_restart() -- Disable auto-restart
+haft.toggle_auto_restart()  -- Toggle auto-restart
+haft.is_auto_restart_enabled() -- Check if enabled
 ```
 
 ## User Events

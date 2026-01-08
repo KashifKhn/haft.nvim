@@ -15,6 +15,9 @@ function M.setup(opts)
   local commands = require("haft.commands")
   commands.setup()
 
+  local api = require("haft.api")
+  api._init_auto_restart()
+
   M._initialized = true
 end
 
@@ -136,6 +139,27 @@ end
 function M.outdated()
   local api = require("haft.api")
   api.outdated()
+end
+
+function M.enable_auto_restart()
+  local api = require("haft.api")
+  api.enable_auto_restart()
+end
+
+function M.disable_auto_restart()
+  local api = require("haft.api")
+  api.disable_auto_restart()
+end
+
+function M.toggle_auto_restart()
+  local api = require("haft.api")
+  api.toggle_auto_restart()
+end
+
+---@return boolean
+function M.is_auto_restart_enabled()
+  local api = require("haft.api")
+  return api.is_auto_restart_enabled()
 end
 
 return M

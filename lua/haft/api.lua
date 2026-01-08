@@ -860,4 +860,102 @@ function M.outdated()
   run_dev_command("outdated", "Haft Outdated", "haft_outdated")
 end
 
+local auto_restart_augroup = nil
+local auto_restart_enabled = false
+
+local function matches_save_pattern(filepath)
+  local cfg = config.get()
+  local patterns = cfg.dev.save_patterns or {}
+
+  for _, pattern in ipairs(patterns) do
+    if vim.fn.fnamemodify(filepath, ":t"):match(vim.fn.glob2regpat(pattern):gsub("%^", ""):gsub("%$", "")) then
+      return true
+    end
+    local ext_pattern = pattern:match("^%*(.+)$")
+    if ext_pattern and filepath:match(ext_pattern:gsub("%.", "%%.") .. "$") then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function trigger_auto_restart()
+  local terminal = require("haft.ui.terminal")
+  if not terminal.is_running("haft_serve") then
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    return
+  end
+
+  runner.run({
+    args = { "dev", "restart" },
+    cwd = root,
+    json = false,
+    on_success = function()
+      notify.info("Auto-restart triggered")
+    end,
+    on_error = function() end,
+  })
+end
+
+function M.enable_auto_restart()
+  if auto_restart_enabled then
+    return
+  end
+
+  auto_restart_augroup = vim.api.nvim_create_augroup("HaftAutoRestart", { clear = true })
+
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = auto_restart_augroup,
+    pattern = "*",
+    callback = function(ev)
+      local filepath = ev.file or vim.api.nvim_buf_get_name(ev.buf)
+      if matches_save_pattern(filepath) then
+        trigger_auto_restart()
+      end
+    end,
+    desc = "Haft auto-restart on save",
+  })
+
+  auto_restart_enabled = true
+  notify.info("Auto-restart enabled")
+end
+
+function M.disable_auto_restart()
+  if not auto_restart_enabled then
+    return
+  end
+
+  if auto_restart_augroup then
+    vim.api.nvim_del_augroup_by_id(auto_restart_augroup)
+    auto_restart_augroup = nil
+  end
+
+  auto_restart_enabled = false
+  notify.info("Auto-restart disabled")
+end
+
+function M.toggle_auto_restart()
+  if auto_restart_enabled then
+    M.disable_auto_restart()
+  else
+    M.enable_auto_restart()
+  end
+end
+
+function M.is_auto_restart_enabled()
+  return auto_restart_enabled
+end
+
+function M._init_auto_restart()
+  local cfg = config.get()
+  if cfg.dev.restart_on_save then
+    M.enable_auto_restart()
+  end
+end
+
 return M
