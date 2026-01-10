@@ -15,6 +15,9 @@ function M.setup(opts)
   local commands = require("haft.commands")
   commands.setup()
 
+  local api = require("haft.api")
+  api._init_auto_restart()
+
   M._initialized = true
 end
 
@@ -81,6 +84,24 @@ function M.generate_dto(name)
   api.generate_dto(name)
 end
 
+---@param opts table?
+function M.generate_exception(opts)
+  local api = require("haft.api")
+  api.generate_exception(opts)
+end
+
+---@param opts table?
+function M.generate_config(opts)
+  local api = require("haft.api")
+  api.generate_config(opts)
+end
+
+---@param opts table?
+function M.generate_security(opts)
+  local api = require("haft.api")
+  api.generate_security(opts)
+end
+
 ---@param deps string[]?
 function M.add(deps)
   local api = require("haft.api")
@@ -91,6 +112,94 @@ end
 function M.remove(deps)
   local api = require("haft.api")
   api.remove(deps)
+end
+
+function M.serve()
+  local api = require("haft.api")
+  api.serve()
+end
+
+function M.serve_stop()
+  local api = require("haft.api")
+  api.serve_stop()
+end
+
+function M.serve_toggle()
+  local api = require("haft.api")
+  api.serve_toggle()
+end
+
+function M.restart()
+  local api = require("haft.api")
+  api.restart()
+end
+
+function M.build()
+  local api = require("haft.api")
+  api.build()
+end
+
+function M.test()
+  local api = require("haft.api")
+  api.test()
+end
+
+function M.clean()
+  local api = require("haft.api")
+  api.clean()
+end
+
+function M.deps()
+  local api = require("haft.api")
+  api.deps()
+end
+
+function M.outdated()
+  local api = require("haft.api")
+  api.outdated()
+end
+
+function M.enable_auto_restart()
+  local api = require("haft.api")
+  api.enable_auto_restart()
+end
+
+function M.disable_auto_restart()
+  local api = require("haft.api")
+  api.disable_auto_restart()
+end
+
+function M.toggle_auto_restart()
+  local api = require("haft.api")
+  api.toggle_auto_restart()
+end
+
+---@return boolean
+function M.is_auto_restart_enabled()
+  local api = require("haft.api")
+  return api.is_auto_restart_enabled()
+end
+
+---@param opts table?
+function M.init(opts)
+  local api = require("haft.api")
+  api.init(opts)
+end
+
+function M.init_tui()
+  local api = require("haft.api")
+  api.init_tui()
+end
+
+function M.init_wizard()
+  local api = require("haft.api")
+  api.init_wizard()
+end
+
+---@param opts table?
+function M.init_quick(opts)
+  local api = require("haft.api")
+  api.init_quick(opts)
 end
 
 return M

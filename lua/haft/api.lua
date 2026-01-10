@@ -527,6 +527,210 @@ function M.generate_dto(name)
   run_generate("dto", "dto", name)
 end
 
+---@param opts table?
+function M.generate_exception(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local args = { "generate", "exception" }
+
+  if opts.all then
+    table.insert(args, "--all")
+  elseif opts.no_interactive then
+    table.insert(args, "--no-interactive")
+  end
+
+  notify.info("Generating exception handler...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local total = data.totalGenerated or 0
+
+        if total > 0 then
+          notify.info(string.format("Generated %d exception file(s)", total))
+          local files = collect_generated_files(data, root)
+          add_to_quickfix(files)
+          auto_open_files(files)
+        else
+          notify.warn("No files were generated")
+        end
+
+        local lines = format_generate_result(data)
+        float.open(lines, { title = "Haft Generate Exception" })
+      else
+        notify.info("Exception handler generated")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to generate exception handler: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.generate_config(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local args = { "generate", "config" }
+
+  if opts.all then
+    table.insert(args, "--all")
+  elseif opts.no_interactive then
+    table.insert(args, "--no-interactive")
+  end
+
+  notify.info("Generating configuration classes...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local total = data.totalGenerated or 0
+
+        if total > 0 then
+          notify.info(string.format("Generated %d config file(s)", total))
+          local files = collect_generated_files(data, root)
+          add_to_quickfix(files)
+          auto_open_files(files)
+        else
+          notify.warn("No files were generated")
+        end
+
+        local lines = format_generate_result(data)
+        float.open(lines, { title = "Haft Generate Config" })
+      else
+        notify.info("Configuration classes generated")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to generate config: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.generate_security(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local function execute(auth_type)
+    local args = { "generate", "security" }
+
+    if auth_type == "all" then
+      table.insert(args, "--all")
+    elseif auth_type == "jwt" then
+      table.insert(args, "--jwt")
+    elseif auth_type == "session" then
+      table.insert(args, "--session")
+    elseif auth_type == "oauth2" then
+      table.insert(args, "--oauth2")
+    end
+
+    table.insert(args, "--no-interactive")
+
+    notify.info("Generating security configuration...")
+
+    runner.run({
+      args = args,
+      cwd = root,
+      json = true,
+      on_success = function(result)
+        if result.data then
+          local data = unwrap_response(result.data)
+          local total = data.totalGenerated or 0
+
+          if total > 0 then
+            notify.info(string.format("Generated %d security file(s)", total))
+            local files = collect_generated_files(data, root)
+            add_to_quickfix(files)
+            auto_open_files(files)
+          else
+            notify.warn("No files were generated")
+          end
+
+          local lines = format_generate_result(data)
+          float.open(lines, { title = "Haft Generate Security" })
+        else
+          notify.info("Security configuration generated")
+        end
+      end,
+      on_error = function(result)
+        notify.error("Failed to generate security: " .. result.output)
+      end,
+    })
+  end
+
+  if opts.jwt then
+    execute("jwt")
+  elseif opts.session then
+    execute("session")
+  elseif opts.oauth2 then
+    execute("oauth2")
+  elseif opts.all then
+    execute("all")
+  else
+    local auth_types = {
+      { id = "jwt", name = "JWT Authentication", desc = "Stateless token-based (recommended for APIs)" },
+      { id = "session", name = "Session Authentication", desc = "Traditional session-based (for web apps)" },
+      { id = "oauth2", name = "OAuth2 Authentication", desc = "OAuth2/OpenID Connect (Google, GitHub, etc.)" },
+      { id = "all", name = "All Types", desc = "Generate all authentication configurations" },
+    }
+
+    local items = {}
+    for _, auth in ipairs(auth_types) do
+      table.insert(items, auth.name .. " - " .. auth.desc)
+    end
+
+    vim.ui.select(items, {
+      prompt = "Select authentication type:",
+    }, function(choice, idx)
+      if not choice then
+        return
+      end
+      execute(auth_types[idx].id)
+    end)
+  end
+end
+
 ---@param data table
 ---@return string[]
 local function format_add_result(data)
@@ -762,6 +966,422 @@ function M.remove(deps)
     else
       notify.error("Failed to load remove picker")
     end
+  end
+end
+
+local function run_dev_command(cmd, title, terminal_id)
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local terminal = require("haft.ui.terminal")
+  local cfg = config.get()
+
+  terminal.open(terminal_id, {
+    cmd = cfg.haft_path,
+    args = { "dev", cmd },
+    cwd = root,
+    title = title,
+  })
+end
+
+function M.serve()
+  run_dev_command("serve", "Haft Dev Server", "haft_serve")
+end
+
+function M.serve_stop()
+  local terminal = require("haft.ui.terminal")
+  if terminal.is_running("haft_serve") then
+    terminal.stop("haft_serve")
+    notify.info("Dev server stopped")
+  else
+    notify.warn("Dev server is not running")
+  end
+end
+
+function M.serve_toggle()
+  local terminal = require("haft.ui.terminal")
+  terminal.toggle("haft_serve")
+end
+
+function M.restart()
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local terminal = require("haft.ui.terminal")
+  if not terminal.is_running("haft_serve") then
+    notify.warn("Dev server is not running. Start it with :HaftServe first")
+    return
+  end
+
+  notify.info("Triggering dev server restart...")
+
+  runner.run({
+    args = { "dev", "restart" },
+    cwd = root,
+    json = false,
+    on_success = function(result)
+      notify.info("Dev server restart triggered")
+    end,
+    on_error = function(result)
+      notify.error("Failed to trigger restart: " .. result.output)
+    end,
+  })
+end
+
+function M.build()
+  run_dev_command("build", "Haft Build", "haft_build")
+end
+
+function M.test()
+  run_dev_command("test", "Haft Test", "haft_test")
+end
+
+function M.clean()
+  run_dev_command("clean", "Haft Clean", "haft_clean")
+end
+
+function M.deps()
+  run_dev_command("deps", "Haft Dependencies", "haft_deps")
+end
+
+function M.outdated()
+  run_dev_command("outdated", "Haft Outdated", "haft_outdated")
+end
+
+local auto_restart_augroup = nil
+local auto_restart_enabled = false
+
+local function matches_save_pattern(filepath)
+  local cfg = config.get()
+  local patterns = cfg.dev.save_patterns or {}
+
+  for _, pattern in ipairs(patterns) do
+    if vim.fn.fnamemodify(filepath, ":t"):match(vim.fn.glob2regpat(pattern):gsub("%^", ""):gsub("%$", "")) then
+      return true
+    end
+    local ext_pattern = pattern:match("^%*(.+)$")
+    if ext_pattern and filepath:match(ext_pattern:gsub("%.", "%%.") .. "$") then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function trigger_auto_restart()
+  local terminal = require("haft.ui.terminal")
+  if not terminal.is_running("haft_serve") then
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    return
+  end
+
+  runner.run({
+    args = { "dev", "restart" },
+    cwd = root,
+    json = false,
+    on_success = function()
+      notify.info("Auto-restart triggered")
+    end,
+    on_error = function() end,
+  })
+end
+
+function M.enable_auto_restart()
+  if auto_restart_enabled then
+    return
+  end
+
+  auto_restart_augroup = vim.api.nvim_create_augroup("HaftAutoRestart", { clear = true })
+
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = auto_restart_augroup,
+    pattern = "*",
+    callback = function(ev)
+      local filepath = ev.file or vim.api.nvim_buf_get_name(ev.buf)
+      if matches_save_pattern(filepath) then
+        trigger_auto_restart()
+      end
+    end,
+    desc = "Haft auto-restart on save",
+  })
+
+  auto_restart_enabled = true
+  notify.info("Auto-restart enabled")
+end
+
+function M.disable_auto_restart()
+  if not auto_restart_enabled then
+    return
+  end
+
+  if auto_restart_augroup then
+    vim.api.nvim_del_augroup_by_id(auto_restart_augroup)
+    auto_restart_augroup = nil
+  end
+
+  auto_restart_enabled = false
+  notify.info("Auto-restart disabled")
+end
+
+function M.toggle_auto_restart()
+  if auto_restart_enabled then
+    M.disable_auto_restart()
+  else
+    M.enable_auto_restart()
+  end
+end
+
+function M.is_auto_restart_enabled()
+  return auto_restart_enabled
+end
+
+function M._init_auto_restart()
+  local cfg = config.get()
+  if cfg.dev.restart_on_save then
+    M.enable_auto_restart()
+  end
+end
+
+local function handle_post_create(project_path, project_name)
+  local cfg = config.get()
+
+  if cfg.init.after_create == "prompt" then
+    local options = {
+      "Open in current window",
+      "Open in new tab",
+      "Just notify (do nothing)",
+    }
+
+    vim.ui.select(options, {
+      prompt = "Project created! What would you like to do?",
+    }, function(choice, idx)
+      if not choice then
+        return
+      end
+
+      if idx == 1 then
+        vim.cmd("cd " .. vim.fn.fnameescape(project_path))
+        vim.cmd("edit .")
+        notify.info("Opened project: " .. project_name)
+      elseif idx == 2 then
+        vim.cmd("tabnew")
+        vim.cmd("tcd " .. vim.fn.fnameescape(project_path))
+        vim.cmd("edit .")
+        notify.info("Opened project in new tab: " .. project_name)
+      else
+        notify.info("Project created at: " .. project_path)
+      end
+    end)
+  elseif cfg.init.after_create == "cd" then
+    vim.cmd("cd " .. vim.fn.fnameescape(project_path))
+    if cfg.init.auto_open then
+      vim.cmd("edit .")
+    end
+    notify.info("Changed to project: " .. project_name)
+  elseif cfg.init.after_create == "tab" then
+    vim.cmd("tabnew")
+    vim.cmd("tcd " .. vim.fn.fnameescape(project_path))
+    if cfg.init.auto_open then
+      vim.cmd("edit .")
+    end
+    notify.info("Opened project in new tab: " .. project_name)
+  else
+    notify.info("Project created at: " .. project_path)
+  end
+end
+
+function M.init(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local cfg = config.get()
+  local mode = opts.mode or cfg.init.default_mode
+
+  if mode == "tui" then
+    M.init_tui()
+  elseif mode == "wizard" then
+    M.init_wizard()
+  elseif mode == "quick" then
+    M.init_quick(opts)
+  else
+    M.init_picker()
+  end
+end
+
+function M.init_picker()
+  local modes = {
+    { id = "tui", name = "TUI Wizard", desc = "Full interactive CLI experience (recommended)" },
+    { id = "wizard", name = "Neovim Wizard", desc = "Step-by-step native Neovim prompts" },
+    { id = "quick", name = "Quick Create", desc = "Create with defaults (prompts for name only)" },
+  }
+
+  local items = {}
+  for _, mode in ipairs(modes) do
+    table.insert(items, mode.name .. " - " .. mode.desc)
+  end
+
+  vim.ui.select(items, {
+    prompt = "How would you like to create your project?",
+  }, function(choice, idx)
+    if not choice then
+      return
+    end
+
+    local selected = modes[idx]
+    if selected.id == "tui" then
+      M.init_tui()
+    elseif selected.id == "wizard" then
+      M.init_wizard()
+    elseif selected.id == "quick" then
+      M.init_quick({})
+    end
+  end)
+end
+
+function M.init_tui()
+  local terminal = require("haft.ui.terminal")
+
+  terminal.open("haft_init", "haft init", {
+    type = "float",
+    float = {
+      width = 0.9,
+      height = 0.9,
+      border = "rounded",
+    },
+    on_exit = function(code)
+      if code == 0 then
+        notify.info("Project initialization completed!")
+      end
+    end,
+  })
+end
+
+function M.init_wizard()
+  local wizard = require("haft.ui.wizard")
+  local steps = wizard.get_init_steps()
+
+  wizard.run(steps, function(results)
+    if not results.name or results.name == "" then
+      notify.warn("Project name is required")
+      return
+    end
+
+    local args = wizard.build_init_command(results)
+    local dir = results.directory or "."
+    local project_path = dir == "." and vim.fn.getcwd() .. "/" .. results.name
+      or vim.fn.expand(dir) .. "/" .. results.name
+
+    notify.info("Creating project: " .. results.name .. "...")
+
+    runner.run({
+      args = args,
+      cwd = dir == "." and vim.fn.getcwd() or vim.fn.expand(dir),
+      json = true,
+      on_success = function(result)
+        vim.schedule(function()
+          handle_post_create(project_path, results.name)
+        end)
+      end,
+      on_error = function(result)
+        notify.error("Failed to create project: " .. (result.output or "Unknown error"))
+      end,
+    })
+  end, function()
+    notify.info("Project creation cancelled")
+  end)
+end
+
+function M.init_quick(opts)
+  opts = opts or {}
+
+  local function create_project(name)
+    if not name or name == "" then
+      notify.warn("Project name is required")
+      return
+    end
+
+    local cfg = config.get()
+    local defaults = cfg.init.defaults
+
+    local args = {
+      "init",
+      name,
+      "--no-interactive",
+      "--json",
+      "--group",
+      opts.group or defaults.group,
+      "--java",
+      opts.java or defaults.java,
+      "--build",
+      opts.build or defaults.build,
+      "--packaging",
+      opts.packaging or defaults.packaging,
+      "--config",
+      opts.config_format or defaults.config_format,
+    }
+
+    if opts.deps and #opts.deps > 0 then
+      table.insert(args, "--deps")
+      table.insert(args, table.concat(opts.deps, ","))
+    end
+
+    local dir = opts.dir or "."
+    local project_path = dir == "." and vim.fn.getcwd() .. "/" .. name or vim.fn.expand(dir) .. "/" .. name
+
+    if dir ~= "." then
+      table.insert(args, "--dir")
+      table.insert(args, vim.fn.expand(dir))
+    end
+
+    notify.info("Creating project: " .. name .. "...")
+
+    runner.run({
+      args = args,
+      cwd = vim.fn.getcwd(),
+      json = true,
+      on_success = function(result)
+        vim.schedule(function()
+          handle_post_create(project_path, name)
+        end)
+      end,
+      on_error = function(result)
+        notify.error("Failed to create project: " .. (result.output or "Unknown error"))
+      end,
+    })
+  end
+
+  if opts.name then
+    create_project(opts.name)
+  else
+    vim.ui.input({ prompt = "Project name: " }, function(name)
+      if name and name ~= "" then
+        create_project(name)
+      end
+    end)
   end
 end
 

@@ -49,6 +49,21 @@
 ---@field restart_on_save boolean
 ---@field save_patterns string[]
 
+---@class HaftInitDefaultsConfig
+---@field group string
+---@field java string
+---@field spring string?
+---@field build string
+---@field packaging string
+---@field config_format string
+
+---@class HaftInitConfig
+---@field default_mode string
+---@field after_create string
+---@field auto_cd boolean
+---@field auto_open boolean
+---@field defaults HaftInitDefaultsConfig
+
 ---@class HaftGenerateCommandConfig
 ---@field refresh boolean
 
@@ -65,6 +80,7 @@
 ---@field quickfix HaftQuickfixConfig
 ---@field terminal HaftTerminalConfig
 ---@field dev HaftDevConfig
+---@field init HaftInitConfig
 ---@field commands HaftCommandsConfig
 ---@field keymaps table
 
@@ -128,6 +144,21 @@ local defaults = {
   dev = {
     restart_on_save = false,
     save_patterns = { "*.java", "*.kt", "*.xml", "*.yaml", "*.yml", "*.properties" },
+  },
+
+  init = {
+    default_mode = "tui",
+    after_create = "prompt",
+    auto_cd = true,
+    auto_open = true,
+    defaults = {
+      group = "com.example",
+      java = "21",
+      spring = nil,
+      build = "maven",
+      packaging = "jar",
+      config_format = "yaml",
+    },
   },
 
   commands = {

@@ -34,6 +34,18 @@ describe("haft.api", function()
     it("has generate_dto function", function()
       assert.is_function(api.generate_dto)
     end)
+
+    it("has generate_exception function", function()
+      assert.is_function(api.generate_exception)
+    end)
+
+    it("has generate_config function", function()
+      assert.is_function(api.generate_config)
+    end)
+
+    it("has generate_security function", function()
+      assert.is_function(api.generate_security)
+    end)
   end)
 
   describe("info functions exist", function()
@@ -1055,5 +1067,1120 @@ describe("haft.commands HaftRemove", function()
     local parsed = vim.split("lombok", "%s+")
     assert.equals(1, #parsed)
     assert.equals("lombok", parsed[1])
+  end)
+end)
+
+describe("haft.api dev functions exist", function()
+  local api
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    api = require("haft.api")
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+  end)
+
+  it("has serve function", function()
+    assert.is_function(api.serve)
+  end)
+
+  it("has serve_stop function", function()
+    assert.is_function(api.serve_stop)
+  end)
+
+  it("has serve_toggle function", function()
+    assert.is_function(api.serve_toggle)
+  end)
+
+  it("has build function", function()
+    assert.is_function(api.build)
+  end)
+
+  it("has test function", function()
+    assert.is_function(api.test)
+  end)
+
+  it("has clean function", function()
+    assert.is_function(api.clean)
+  end)
+
+  it("has deps function", function()
+    assert.is_function(api.deps)
+  end)
+
+  it("has outdated function", function()
+    assert.is_function(api.outdated)
+  end)
+
+  it("has restart function", function()
+    assert.is_function(api.restart)
+  end)
+end)
+
+describe("haft.api restart function", function()
+  local api
+  local mock_runner
+  local mock_notify
+  local mock_detection
+  local mock_terminal
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_runner = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function(opts)
+        mock_runner.last_opts = opts
+        if mock_runner.mock_success then
+          opts.on_success(mock_runner.mock_result)
+        elseif mock_runner.mock_error and opts.on_error then
+          opts.on_error(mock_runner.mock_result)
+        end
+      end,
+      last_opts = nil,
+      mock_success = false,
+      mock_error = false,
+      mock_result = nil,
+    }
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    mock_detection = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+
+    mock_terminal = {
+      is_running = function(name)
+        return mock_terminal.mock_is_running
+      end,
+      mock_is_running = true,
+    }
+
+    package.loaded["haft.runner"] = mock_runner
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = mock_detection
+    package.loaded["haft.ui.terminal"] = mock_terminal
+
+    api = require("haft.api")
+  end)
+
+  it("warns when haft CLI is not available", function()
+    mock_runner.is_haft_available = function()
+      return false
+    end
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_error, "Haft CLI not found"))
+  end)
+
+  it("warns when not in a haft project", function()
+    mock_detection.get_project_root = function()
+      return nil
+    end
+
+    api.restart()
+
+    assert.equals("Not in a Haft/Spring Boot project", mock_notify.last_warn)
+  end)
+
+  it("warns when dev server is not running", function()
+    mock_terminal.mock_is_running = false
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_warn, "Dev server is not running"))
+  end)
+
+  it("triggers restart when server is running", function()
+    mock_runner.mock_success = true
+    mock_runner.mock_result = { output = "" }
+
+    api.restart()
+
+    assert.is_not_nil(mock_runner.last_opts)
+    assert.equals("dev", mock_runner.last_opts.args[1])
+    assert.equals("restart", mock_runner.last_opts.args[2])
+    assert.equals("/mock/project", mock_runner.last_opts.cwd)
+    assert.is_false(mock_runner.last_opts.json)
+  end)
+
+  it("shows success notification on successful restart", function()
+    mock_runner.mock_success = true
+    mock_runner.mock_result = { output = "" }
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_info, "restart"))
+  end)
+
+  it("shows error notification on failed restart", function()
+    mock_runner.mock_error = true
+    mock_runner.mock_result = { output = "Failed to create trigger file" }
+
+    api.restart()
+
+    assert.is_not_nil(string.find(mock_notify.last_error, "Failed to trigger restart"))
+  end)
+end)
+
+describe("haft.api auto-restart functions", function()
+  local api
+  local mock_notify
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    mock_notify = {
+      info = function(msg)
+        mock_notify.last_info = msg
+      end,
+      warn = function(msg)
+        mock_notify.last_warn = msg
+      end,
+      error = function(msg)
+        mock_notify.last_error = msg
+      end,
+      last_info = nil,
+      last_warn = nil,
+      last_error = nil,
+    }
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = mock_notify
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    api = require("haft.api")
+  end)
+
+  it("has enable_auto_restart function", function()
+    assert.is_function(api.enable_auto_restart)
+  end)
+
+  it("has disable_auto_restart function", function()
+    assert.is_function(api.disable_auto_restart)
+  end)
+
+  it("has toggle_auto_restart function", function()
+    assert.is_function(api.toggle_auto_restart)
+  end)
+
+  it("has is_auto_restart_enabled function", function()
+    assert.is_function(api.is_auto_restart_enabled)
+  end)
+
+  it("auto-restart is disabled by default", function()
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enable_auto_restart enables auto-restart", function()
+    api.enable_auto_restart()
+    assert.is_true(api.is_auto_restart_enabled())
+    assert.is_not_nil(string.find(mock_notify.last_info, "enabled"))
+    api.disable_auto_restart()
+  end)
+
+  it("disable_auto_restart disables auto-restart", function()
+    api.enable_auto_restart()
+    api.disable_auto_restart()
+    assert.is_false(api.is_auto_restart_enabled())
+    assert.is_not_nil(string.find(mock_notify.last_info, "disabled"))
+  end)
+
+  it("toggle_auto_restart toggles state", function()
+    assert.is_false(api.is_auto_restart_enabled())
+    api.toggle_auto_restart()
+    assert.is_true(api.is_auto_restart_enabled())
+    api.toggle_auto_restart()
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enable does nothing if already enabled", function()
+    api.enable_auto_restart()
+    mock_notify.last_info = nil
+    api.enable_auto_restart()
+    assert.is_nil(mock_notify.last_info)
+    api.disable_auto_restart()
+  end)
+
+  it("disable does nothing if already disabled", function()
+    mock_notify.last_info = nil
+    api.disable_auto_restart()
+    assert.is_nil(mock_notify.last_info)
+  end)
+end)
+
+describe("haft.api auto-restart config initialization", function()
+  it("does not enable auto-restart when restart_on_save is false", function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({ dev = { restart_on_save = false } })
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = {
+      info = function() end,
+      warn = function() end,
+      error = function() end,
+    }
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    local api = require("haft.api")
+    api._init_auto_restart()
+
+    assert.is_false(api.is_auto_restart_enabled())
+  end)
+
+  it("enables auto-restart when restart_on_save is true", function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({ dev = { restart_on_save = true } })
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = {
+      info = function() end,
+      warn = function() end,
+      error = function() end,
+    }
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return true
+      end,
+    }
+
+    local api = require("haft.api")
+    api._init_auto_restart()
+
+    assert.is_true(api.is_auto_restart_enabled())
+    api.disable_auto_restart()
+  end)
+end)
+
+describe("haft.config terminal settings", function()
+  local config
+
+  before_each(function()
+    package.loaded["haft.config"] = nil
+    config = require("haft.config")
+    config.reset()
+  end)
+
+  describe("terminal config", function()
+    it("default type is auto", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals("auto", cfg.terminal.type)
+    end)
+
+    it("default persist is true", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_true(cfg.terminal.persist)
+    end)
+
+    it("default auto_close is false", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_false(cfg.terminal.auto_close)
+    end)
+
+    it("has float config with defaults", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals("rounded", cfg.terminal.float.border)
+      assert.equals(0.8, cfg.terminal.float.width)
+      assert.equals(0.8, cfg.terminal.float.height)
+    end)
+
+    it("has split config with defaults", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.equals(15, cfg.terminal.split.size)
+      assert.equals("below", cfg.terminal.split.position)
+    end)
+
+    it("can configure terminal type", function()
+      config.setup({ terminal = { type = "float" } })
+      local cfg = config.get()
+      assert.equals("float", cfg.terminal.type)
+    end)
+
+    it("can configure split size", function()
+      config.setup({ terminal = { split = { size = 20 } } })
+      local cfg = config.get()
+      assert.equals(20, cfg.terminal.split.size)
+    end)
+  end)
+
+  describe("dev config", function()
+    it("default restart_on_save is false", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_false(cfg.dev.restart_on_save)
+    end)
+
+    it("has default save_patterns", function()
+      config.setup({})
+      local cfg = config.get()
+      assert.is_table(cfg.dev.save_patterns)
+      assert.is_true(#cfg.dev.save_patterns > 0)
+    end)
+  end)
+end)
+
+describe("haft.ui.terminal", function()
+  local terminal
+
+  before_each(function()
+    package.loaded["haft.ui.terminal"] = nil
+    package.loaded["haft.config"] = nil
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+    terminal = require("haft.ui.terminal")
+  end)
+
+  describe("module structure", function()
+    it("has open function", function()
+      assert.is_function(terminal.open)
+    end)
+
+    it("has close function", function()
+      assert.is_function(terminal.close)
+    end)
+
+    it("has toggle function", function()
+      assert.is_function(terminal.toggle)
+    end)
+
+    it("has is_running function", function()
+      assert.is_function(terminal.is_running)
+    end)
+
+    it("has stop function", function()
+      assert.is_function(terminal.stop)
+    end)
+
+    it("has send function", function()
+      assert.is_function(terminal.send)
+    end)
+
+    it("has close_all function", function()
+      assert.is_function(terminal.close_all)
+    end)
+  end)
+
+  describe("terminal state", function()
+    it("is_running returns false for non-existent terminal", function()
+      assert.is_false(terminal.is_running("nonexistent"))
+    end)
+
+    it("close handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.close("nonexistent")
+      end)
+    end)
+
+    it("stop handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.stop("nonexistent")
+      end)
+    end)
+
+    it("send handles non-existent terminal gracefully", function()
+      assert.has_no_errors(function()
+        terminal.send("nonexistent", "data")
+      end)
+    end)
+  end)
+end)
+
+describe("haft.api init functions", function()
+  local api
+
+  before_each(function()
+    package.loaded["haft.api"] = nil
+    package.loaded["haft.config"] = nil
+    package.loaded["haft.runner"] = nil
+    package.loaded["haft.ui.notify"] = nil
+    package.loaded["haft.detection"] = nil
+    package.loaded["haft.ui.terminal"] = nil
+    package.loaded["haft.ui.wizard"] = nil
+
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+
+    package.loaded["haft.runner"] = {
+      is_haft_available = function()
+        return true
+      end,
+      run = function() end,
+    }
+    package.loaded["haft.ui.notify"] = {
+      info = function() end,
+      warn = function() end,
+      error = function() end,
+    }
+    package.loaded["haft.detection"] = {
+      get_project_root = function()
+        return "/mock/project"
+      end,
+    }
+    package.loaded["haft.ui.terminal"] = {
+      is_running = function()
+        return false
+      end,
+      open = function() end,
+    }
+
+    api = require("haft.api")
+  end)
+
+  it("has init function", function()
+    assert.is_function(api.init)
+  end)
+
+  it("has init_tui function", function()
+    assert.is_function(api.init_tui)
+  end)
+
+  it("has init_wizard function", function()
+    assert.is_function(api.init_wizard)
+  end)
+
+  it("has init_quick function", function()
+    assert.is_function(api.init_quick)
+  end)
+
+  it("has init_picker function", function()
+    assert.is_function(api.init_picker)
+  end)
+end)
+
+describe("haft.config init settings", function()
+  local config
+
+  before_each(function()
+    package.loaded["haft.config"] = nil
+    config = require("haft.config")
+    config.reset()
+  end)
+
+  it("default mode is tui", function()
+    config.setup({})
+    local cfg = config.get()
+    assert.equals("tui", cfg.init.default_mode)
+  end)
+
+  it("default after_create is prompt", function()
+    config.setup({})
+    local cfg = config.get()
+    assert.equals("prompt", cfg.init.after_create)
+  end)
+
+  it("default auto_cd is true", function()
+    config.setup({})
+    local cfg = config.get()
+    assert.is_true(cfg.init.auto_cd)
+  end)
+
+  it("default auto_open is true", function()
+    config.setup({})
+    local cfg = config.get()
+    assert.is_true(cfg.init.auto_open)
+  end)
+
+  it("has defaults section", function()
+    config.setup({})
+    local cfg = config.get()
+    assert.is_table(cfg.init.defaults)
+    assert.equals("com.example", cfg.init.defaults.group)
+    assert.equals("21", cfg.init.defaults.java)
+    assert.equals("maven", cfg.init.defaults.build)
+    assert.equals("jar", cfg.init.defaults.packaging)
+    assert.equals("yaml", cfg.init.defaults.config_format)
+  end)
+
+  it("can override default mode", function()
+    config.setup({ init = { default_mode = "wizard" } })
+    local cfg = config.get()
+    assert.equals("wizard", cfg.init.default_mode)
+  end)
+
+  it("can override after_create", function()
+    config.setup({ init = { after_create = "cd" } })
+    local cfg = config.get()
+    assert.equals("cd", cfg.init.after_create)
+  end)
+
+  it("can override defaults", function()
+    config.setup({ init = { defaults = { java = "17", build = "gradle" } } })
+    local cfg = config.get()
+    assert.equals("17", cfg.init.defaults.java)
+    assert.equals("gradle", cfg.init.defaults.build)
+    assert.equals("com.example", cfg.init.defaults.group)
+  end)
+end)
+
+describe("haft.ui.wizard", function()
+  local wizard
+
+  before_each(function()
+    package.loaded["haft.ui.wizard"] = nil
+    package.loaded["haft.config"] = nil
+    local config = require("haft.config")
+    config.reset()
+    config.setup({})
+    wizard = require("haft.ui.wizard")
+  end)
+
+  describe("module structure", function()
+    it("has run function", function()
+      assert.is_function(wizard.run)
+    end)
+
+    it("has get_init_steps function", function()
+      assert.is_function(wizard.get_init_steps)
+    end)
+
+    it("has build_init_command function", function()
+      assert.is_function(wizard.build_init_command)
+    end)
+
+    it("has get_java_versions function", function()
+      assert.is_function(wizard.get_java_versions)
+    end)
+
+    it("has get_build_tools function", function()
+      assert.is_function(wizard.get_build_tools)
+    end)
+
+    it("has get_common_deps function", function()
+      assert.is_function(wizard.get_common_deps)
+    end)
+  end)
+
+  describe("helper data", function()
+    it("returns java versions", function()
+      local versions = wizard.get_java_versions()
+      assert.is_table(versions)
+      assert.is_true(#versions >= 2)
+      assert.is_true(vim.tbl_contains(versions, "21"))
+      assert.is_true(vim.tbl_contains(versions, "17"))
+    end)
+
+    it("returns build tools", function()
+      local tools = wizard.get_build_tools()
+      assert.is_table(tools)
+      assert.is_true(vim.tbl_contains(tools, "maven"))
+      assert.is_true(vim.tbl_contains(tools, "gradle"))
+    end)
+
+    it("returns common dependencies", function()
+      local deps = wizard.get_common_deps()
+      assert.is_table(deps)
+      assert.is_true(#deps > 0)
+      local has_web = false
+      for _, dep in ipairs(deps) do
+        if dep.id == "web" then
+          has_web = true
+          break
+        end
+      end
+      assert.is_true(has_web)
+    end)
+  end)
+
+  describe("init steps", function()
+    it("returns steps array", function()
+      local steps = wizard.get_init_steps()
+      assert.is_table(steps)
+      assert.is_true(#steps > 0)
+    end)
+
+    it("first step is project name", function()
+      local steps = wizard.get_init_steps()
+      assert.equals("name", steps[1].name)
+      assert.equals("input", steps[1].type)
+      assert.is_true(steps[1].required)
+    end)
+
+    it("has group step", function()
+      local steps = wizard.get_init_steps()
+      local found = false
+      for _, step in ipairs(steps) do
+        if step.name == "group" then
+          found = true
+          break
+        end
+      end
+      assert.is_true(found)
+    end)
+
+    it("has java step", function()
+      local steps = wizard.get_init_steps()
+      local found = false
+      for _, step in ipairs(steps) do
+        if step.name == "java" then
+          found = true
+          assert.equals("select", step.type)
+          break
+        end
+      end
+      assert.is_true(found)
+    end)
+
+    it("has deps step", function()
+      local steps = wizard.get_init_steps()
+      local found = false
+      for _, step in ipairs(steps) do
+        if step.name == "deps" then
+          found = true
+          assert.equals("multiselect", step.type)
+          break
+        end
+      end
+      assert.is_true(found)
+    end)
+  end)
+
+  describe("build_init_command", function()
+    it("builds basic command", function()
+      local results = { name = "myapp" }
+      local args = wizard.build_init_command(results)
+      assert.equals("init", args[1])
+      assert.equals("myapp", args[2])
+      assert.is_true(vim.tbl_contains(args, "--no-interactive"))
+      assert.is_true(vim.tbl_contains(args, "--json"))
+    end)
+
+    it("includes group when provided", function()
+      local results = { name = "myapp", group = "com.example" }
+      local args = wizard.build_init_command(results)
+      local group_idx = nil
+      for i, arg in ipairs(args) do
+        if arg == "--group" then
+          group_idx = i
+          break
+        end
+      end
+      assert.is_not_nil(group_idx)
+      assert.equals("com.example", args[group_idx + 1])
+    end)
+
+    it("includes java version", function()
+      local results = { name = "myapp", java = "21" }
+      local args = wizard.build_init_command(results)
+      local java_idx = nil
+      for i, arg in ipairs(args) do
+        if arg == "--java" then
+          java_idx = i
+          break
+        end
+      end
+      assert.is_not_nil(java_idx)
+      assert.equals("21", args[java_idx + 1])
+    end)
+
+    it("includes deps when provided", function()
+      local results = { name = "myapp", deps = { "web", "jpa", "lombok" } }
+      local args = wizard.build_init_command(results)
+      local deps_idx = nil
+      for i, arg in ipairs(args) do
+        if arg == "--deps" then
+          deps_idx = i
+          break
+        end
+      end
+      assert.is_not_nil(deps_idx)
+      assert.equals("web,jpa,lombok", args[deps_idx + 1])
+    end)
+
+    it("includes directory when not current", function()
+      local results = { name = "myapp", directory = "/some/path" }
+      local args = wizard.build_init_command(results)
+      local dir_idx = nil
+      for i, arg in ipairs(args) do
+        if arg == "--dir" then
+          dir_idx = i
+          break
+        end
+      end
+      assert.is_not_nil(dir_idx)
+      assert.equals("/some/path", args[dir_idx + 1])
+    end)
+
+    it("does not include directory when current dir", function()
+      local results = { name = "myapp", directory = "." }
+      local args = wizard.build_init_command(results)
+      local has_dir = vim.tbl_contains(args, "--dir")
+      assert.is_false(has_dir)
+    end)
+  end)
+
+  describe("generate_exception", function()
+    it("warns when haft CLI is not available", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return false
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function()
+          warned = true
+        end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_exception({})
+
+      assert.is_true(warned)
+    end)
+
+    it("warns when not in a project", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return nil
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function()
+          warned = true
+        end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_exception({})
+
+      assert.is_true(warned)
+    end)
+  end)
+
+  describe("generate_config", function()
+    it("warns when haft CLI is not available", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return false
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function()
+          warned = true
+        end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_config({})
+
+      assert.is_true(warned)
+    end)
+
+    it("warns when not in a project", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return nil
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function()
+          warned = true
+        end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_config({})
+
+      assert.is_true(warned)
+    end)
+  end)
+
+  describe("generate_security", function()
+    it("warns when haft CLI is not available", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return false
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function()
+          warned = true
+        end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({})
+
+      assert.is_true(warned)
+    end)
+
+    it("warns when not in a project", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return nil
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function()
+          warned = true
+        end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({})
+
+      assert.is_true(warned)
+    end)
+
+    it("accepts jwt option", function()
+      local run_called = false
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_called = true
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({ jwt = true })
+
+      assert.is_true(run_called)
+      assert.is_true(vim.tbl_contains(run_args, "--jwt"))
+    end)
+
+    it("accepts session option", function()
+      local run_called = false
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_called = true
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({ session = true })
+
+      assert.is_true(run_called)
+      assert.is_true(vim.tbl_contains(run_args, "--session"))
+    end)
+
+    it("accepts oauth2 option", function()
+      local run_called = false
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_called = true
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({ oauth2 = true })
+
+      assert.is_true(run_called)
+      assert.is_true(vim.tbl_contains(run_args, "--oauth2"))
+    end)
+
+    it("accepts all option", function()
+      local run_called = false
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_called = true
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.generate_security({ all = true })
+
+      assert.is_true(run_called)
+      assert.is_true(vim.tbl_contains(run_args, "--all"))
+    end)
   end)
 end)
