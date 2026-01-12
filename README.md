@@ -98,7 +98,7 @@ require("haft").setup({
   -- Auto-detection settings
   detection = {
     enabled = true,
-    patterns = { ".haft.yaml", "pom.xml", "build.gradle", "build.gradle.kts" },
+    patterns = { ".haft.json", "pom.xml", "build.gradle", "build.gradle.kts" },
   },
 
   -- Notification settings
@@ -469,7 +469,7 @@ require("haft").setup({
 Most commands require being in a Haft/Spring Boot project directory. Check:
 
 1. Run `:HaftInfo` to see if project is detected
-2. Look for `pom.xml`, `build.gradle`, or `.haft.yaml` in project root
+2. Look for `pom.xml`, `build.gradle`, or `.haft.json` in project root
 
 ## Contributing
 

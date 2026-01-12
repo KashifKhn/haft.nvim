@@ -86,7 +86,7 @@ end
 ---@param root string
 ---@return string
 function M._detect_project_type(root)
-  if vim.fn.filereadable(root .. "/.haft.yaml") == 1 then
+  if vim.fn.filereadable(root .. "/.haft.json") == 1 then
     return "haft"
   elseif vim.fn.filereadable(root .. "/pom.xml") == 1 then
     return "maven"
