@@ -65,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `:HaftClean` - Clean build artifacts
 - `:HaftDeps` - Display dependency tree
 - `:HaftOutdated` - Check for dependency updates
+- `:HaftPackage` - Create deployable artifact without tests
+- `:HaftValidate` - Validate project configuration and structure
+- `:HaftVerify` - Run integration tests and quality checks
 
 #### Auto-Restart Feature
 - `:HaftAutoRestartEnable` - Enable auto-restart on file save

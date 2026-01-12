@@ -152,6 +152,18 @@ function M.setup()
     api.outdated()
   end, { desc = "Check for dependency updates" })
 
+  vim.api.nvim_create_user_command("HaftPackage", function()
+    api.package()
+  end, { desc = "Create deployable artifact without tests" })
+
+  vim.api.nvim_create_user_command("HaftValidate", function()
+    api.validate()
+  end, { desc = "Validate project configuration and structure" })
+
+  vim.api.nvim_create_user_command("HaftVerify", function()
+    api.verify()
+  end, { desc = "Run integration tests and quality checks" })
+
   vim.api.nvim_create_user_command("HaftAutoRestartEnable", function()
     api.enable_auto_restart()
   end, { desc = "Enable auto-restart on file save" })

@@ -166,6 +166,21 @@ function M.outdated()
   api.outdated()
 end
 
+function M.package()
+  local api = require("haft.api")
+  api.package()
+end
+
+function M.validate()
+  local api = require("haft.api")
+  api.validate()
+end
+
+function M.verify()
+  local api = require("haft.api")
+  api.verify()
+end
+
 function M.enable_auto_restart()
   local api = require("haft.api")
   api.enable_auto_restart()

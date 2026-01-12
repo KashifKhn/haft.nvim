@@ -1117,6 +1117,18 @@ describe("haft.api dev functions exist", function()
   it("has restart function", function()
     assert.is_function(api.restart)
   end)
+
+  it("has package function", function()
+    assert.is_function(api.package)
+  end)
+
+  it("has validate function", function()
+    assert.is_function(api.validate)
+  end)
+
+  it("has verify function", function()
+    assert.is_function(api.verify)
+  end)
 end)
 
 describe("haft.api restart function", function()

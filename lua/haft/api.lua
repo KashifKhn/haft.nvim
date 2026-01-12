@@ -1192,6 +1192,18 @@ function M.outdated()
   run_dev_command("outdated", "Haft Outdated", "haft_outdated")
 end
 
+function M.package()
+  run_dev_command("package", "Haft Package", "haft_package")
+end
+
+function M.validate()
+  run_dev_command("validate", "Haft Validate", "haft_validate")
+end
+
+function M.verify()
+  run_dev_command("verify", "Haft Verify", "haft_verify")
+end
+
 local auto_restart_augroup = nil
 local auto_restart_enabled = false
 

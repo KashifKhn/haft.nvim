@@ -313,6 +313,18 @@ DEVELOPMENT COMMANDS                                        *haft-commands-dev*
 :HaftOutdated~
     Check for outdated dependencies.
 
+                                                                   *:HaftPackage*
+:HaftPackage~
+    Create deployable artifact without running tests.
+
+                                                                  *:HaftValidate*
+:HaftValidate~
+    Validate project configuration and structure.
+
+                                                                    *:HaftVerify*
+:HaftVerify~
+    Run integration tests and quality checks.
+
 ------------------------------------------------------------------------------
 AUTO-RESTART                                          *haft-commands-autorestart*
 
@@ -459,6 +471,9 @@ haft.test()                Run tests
 haft.clean()               Clean build artifacts
 haft.deps()                Show dependency tree
 haft.outdated()            Check outdated dependencies
+haft.package()             Create deployable artifact
+haft.validate()            Validate project config
+haft.verify()              Run integration tests
 
 ------------------------------------------------------------------------------
 Auto-Restart Functions~

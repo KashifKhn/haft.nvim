@@ -56,6 +56,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
     "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
     "HaftInit", "HaftInitTui", "HaftInitWizard", "HaftInitQuick",
+    "HaftPackage", "HaftValidate", "HaftVerify",
     "HaftTemplateInit", "HaftTemplateList", "HaftTemplateValidate",
     "HaftVersion", "HaftUpgrade",
   },
@@ -272,6 +273,9 @@ require("haft").setup({
 | `:HaftClean` | Clean build artifacts (runs in terminal) |
 | `:HaftDeps` | Display dependency tree (runs in terminal) |
 | `:HaftOutdated` | Check for dependency updates (runs in terminal) |
+| `:HaftPackage` | Create deployable artifact without tests |
+| `:HaftValidate` | Validate project configuration and structure |
+| `:HaftVerify` | Run integration tests and quality checks |
 
 ### Auto-Restart on Save
 
@@ -429,6 +433,9 @@ haft.test()                 -- Run tests
 haft.clean()                -- Clean build
 haft.deps()                 -- Show dependency tree
 haft.outdated()             -- Check for updates
+haft.package()              -- Create deployable artifact
+haft.validate()             -- Validate project config
+haft.verify()               -- Run integration tests
 
 -- Auto-restart on save
 haft.enable_auto_restart()  -- Enable auto-restart
