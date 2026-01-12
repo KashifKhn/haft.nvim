@@ -2183,4 +2183,180 @@ describe("haft.ui.wizard", function()
       assert.is_true(vim.tbl_contains(run_args, "--all"))
     end)
   end)
+
+  describe("doctor", function()
+    it("has doctor function", function()
+      package.loaded["haft.api"] = nil
+      package.loaded["haft.config"] = nil
+      local config = require("haft.config")
+      config.reset()
+      config.setup({})
+      local test_api = require("haft.api")
+      assert.is_function(test_api.doctor)
+    end)
+
+    it("warns when haft CLI is not available", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return false
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function()
+          warned = true
+        end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.doctor({})
+
+      assert.is_true(warned)
+    end)
+
+    it("warns when not in a project", function()
+      local warned = false
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return nil
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function()
+          warned = true
+        end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.doctor({})
+
+      assert.is_true(warned)
+    end)
+
+    it("accepts category option", function()
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.doctor({ category = "security" })
+
+      assert.is_true(vim.tbl_contains(run_args, "--category"))
+      assert.is_true(vim.tbl_contains(run_args, "security"))
+    end)
+
+    it("accepts strict option", function()
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.doctor({ strict = true })
+
+      assert.is_true(vim.tbl_contains(run_args, "--strict"))
+    end)
+  end)
+
+  describe("stats with cocomo", function()
+    it("adds cocomo flag when option provided", function()
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.stats({ cocomo = true })
+
+      assert.is_true(vim.tbl_contains(run_args, "--cocomo"))
+    end)
+
+    it("does not add cocomo flag when option not provided", function()
+      local run_args = nil
+      package.loaded["haft.runner"] = {
+        is_haft_available = function()
+          return true
+        end,
+        run = function(opts)
+          run_args = opts.args
+        end,
+      }
+      package.loaded["haft.detection"] = {
+        get_project_root = function()
+          return "/fake/project"
+        end,
+      }
+      package.loaded["haft.ui.notify"] = {
+        error = function() end,
+        info = function() end,
+        warn = function() end,
+      }
+
+      package.loaded["haft.api"] = nil
+      local test_api = require("haft.api")
+      test_api.stats({})
+
+      assert.is_false(vim.tbl_contains(run_args, "--cocomo"))
+    end)
+  end)
 end)

@@ -47,7 +47,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "nvim-telescope/telescope.nvim", -- optional but recommended
   },
   cmd = {
-    "HaftInfo", "HaftRoutes", "HaftStats",
+    "HaftInfo", "HaftRoutes", "HaftStats", "HaftDoctor",
     "HaftAdd", "HaftRemove",
     "HaftGenerateResource", "HaftGenerateController",
     "HaftGenerateService", "HaftGenerateRepository", "HaftGenerateEntity",
@@ -226,6 +226,15 @@ require("haft").setup({
 | `:HaftInfo` | Show project information in floating window |
 | `:HaftRoutes` | Show API routes in floating window |
 | `:HaftStats` | Show code statistics in floating window |
+| `:HaftStats cocomo` | Show statistics with COCOMO cost estimates |
+
+### Project Health
+
+| Command | Description |
+|---------|-------------|
+| `:HaftDoctor` | Run project health check |
+| `:HaftDoctor [category]` | Check specific category (build/source/config/security) |
+| `:HaftDoctor strict` | Strict mode (treats warnings as errors) |
 
 ### Dependency Management
 
@@ -293,6 +302,7 @@ No default keybindings are provided. Configure your own:
 vim.keymap.set("n", "<leader>hi", "<cmd>HaftInfo<cr>", { desc = "Haft: Info" })
 vim.keymap.set("n", "<leader>hr", "<cmd>HaftRoutes<cr>", { desc = "Haft: Routes" })
 vim.keymap.set("n", "<leader>hs", "<cmd>HaftStats<cr>", { desc = "Haft: Stats" })
+vim.keymap.set("n", "<leader>hD", "<cmd>HaftDoctor<cr>", { desc = "Haft: Doctor" })
 
 vim.keymap.set("n", "<leader>ha", "<cmd>HaftAdd<cr>", { desc = "Haft: Add dependency" })
 vim.keymap.set("n", "<leader>hR", "<cmd>HaftRemove<cr>", { desc = "Haft: Remove dependency" })
@@ -343,7 +353,11 @@ haft.get_project_info()     -- table or nil
 -- Information commands
 haft.info()
 haft.routes()
-haft.stats()
+haft.stats()                -- Show code statistics
+haft.stats({cocomo=true})   -- With COCOMO cost estimates
+haft.doctor()               -- Project health check
+haft.doctor({category="security"}) -- Check specific category
+haft.doctor({strict=true})  -- Strict mode
 
 -- Dependency management
 haft.add(dependencies)      -- array or nil (opens picker if nil)

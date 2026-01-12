@@ -43,9 +43,16 @@ function M.routes()
   api.routes()
 end
 
-function M.stats()
+---@param opts table?
+function M.stats(opts)
   local api = require("haft.api")
-  api.stats()
+  api.stats(opts)
+end
+
+---@param opts table?
+function M.doctor(opts)
+  local api = require("haft.api")
+  api.doctor(opts)
 end
 
 ---@param name string?

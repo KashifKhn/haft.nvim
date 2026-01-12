@@ -151,6 +151,81 @@ end
 
 ---@param data table
 ---@return string[]
+local function format_doctor(data)
+  local lines = {}
+
+  table.insert(lines, "Project Health Check")
+  table.insert(lines, string.rep("─", 70))
+  table.insert(lines, "")
+
+  local checks = data.checks or data.results or {}
+  if #checks == 0 and not data.summary then
+    table.insert(lines, "  No health check results found")
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  local icons = {
+    pass = "✓",
+    passed = "✓",
+    ok = "✓",
+    warn = "⚠",
+    warning = "⚠",
+    fail = "✗",
+    failed = "✗",
+    error = "✗",
+    info = "ℹ",
+  }
+
+  local categories = {}
+  for _, check in ipairs(checks) do
+    local cat = check.category or "general"
+    if not categories[cat] then
+      categories[cat] = {}
+    end
+    table.insert(categories[cat], check)
+  end
+
+  for cat, cat_checks in pairs(categories) do
+    table.insert(lines, string.upper(cat))
+    table.insert(lines, string.rep("─", 40))
+
+    for _, check in ipairs(cat_checks) do
+      local status = (check.status or check.result or "info"):lower()
+      local icon = icons[status] or "•"
+      local msg = check.message or check.name or ""
+      table.insert(lines, string.format("  %s %s", icon, msg))
+
+      if check.suggestion or check.fix then
+        table.insert(lines, "    → " .. (check.suggestion or check.fix))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if data.summary then
+    table.insert(lines, "Summary")
+    table.insert(lines, string.rep("─", 40))
+    if data.summary.passed ~= nil then
+      table.insert(lines, string.format("  ✓ Passed:   %d", data.summary.passed or 0))
+    end
+    if data.summary.warnings ~= nil then
+      table.insert(lines, string.format("  ⚠ Warnings: %d", data.summary.warnings or 0))
+    end
+    if data.summary.errors ~= nil or data.summary.failed ~= nil then
+      table.insert(lines, string.format("  ✗ Errors:   %d", data.summary.errors or data.summary.failed or 0))
+    end
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@return string[]
 local function format_stats(data)
   local lines = {}
 
@@ -303,7 +378,9 @@ function M.routes()
   })
 end
 
-function M.stats()
+function M.stats(opts)
+  opts = opts or {}
+
   if not runner.is_haft_available() then
     notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
     return
@@ -317,8 +394,13 @@ function M.stats()
 
   notify.info("Fetching statistics...")
 
+  local args = { "stats" }
+  if opts.cocomo then
+    table.insert(args, "--cocomo")
+  end
+
   runner.run({
-    args = { "stats" },
+    args = args,
     cwd = root,
     json = true,
     on_success = function(result)
@@ -333,6 +415,52 @@ function M.stats()
     end,
     on_error = function(result)
       notify.error("Failed to get stats: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.doctor(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  notify.info("Running health check...")
+
+  local args = { "doctor" }
+  if opts.category then
+    table.insert(args, "--category")
+    table.insert(args, opts.category)
+  end
+  if opts.strict then
+    table.insert(args, "--strict")
+  end
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local lines = format_doctor(data)
+        float.open(lines, { title = "Haft Doctor" })
+      else
+        local lines = vim.split(result.output, "\n")
+        float.open(lines, { title = "Haft Doctor" })
+      end
+    end,
+    on_error = function(result)
+      notify.error("Health check failed: " .. result.output)
     end,
   })
 end

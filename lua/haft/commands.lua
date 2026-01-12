@@ -11,9 +11,27 @@ function M.setup()
     api.routes()
   end, { desc = "Show API routes" })
 
-  vim.api.nvim_create_user_command("HaftStats", function()
-    api.stats()
-  end, { desc = "Show code statistics" })
+  vim.api.nvim_create_user_command("HaftStats", function(opts)
+    local args = opts.args
+    if args == "cocomo" then
+      api.stats({ cocomo = true })
+    else
+      api.stats({})
+    end
+  end, { nargs = "?", desc = "Show code statistics" })
+
+  vim.api.nvim_create_user_command("HaftDoctor", function(opts)
+    local args = opts.args
+    local doctor_opts = {}
+    if args ~= "" then
+      if args == "strict" then
+        doctor_opts.strict = true
+      else
+        doctor_opts.category = args
+      end
+    end
+    api.doctor(doctor_opts)
+  end, { nargs = "?", desc = "Run project health check" })
 
   vim.api.nvim_create_user_command("HaftGenerateResource", function(opts)
     local name = opts.args ~= "" and opts.args or nil
