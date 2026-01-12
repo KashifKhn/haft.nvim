@@ -56,6 +56,8 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
     "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
     "HaftInit", "HaftInitTui", "HaftInitWizard", "HaftInitQuick",
+    "HaftTemplateInit", "HaftTemplateList", "HaftTemplateValidate",
+    "HaftVersion", "HaftUpgrade",
   },
   opts = {},
 }
@@ -279,6 +281,26 @@ require("haft").setup({
 | `:HaftAutoRestartDisable` | Disable auto-restart on file save |
 | `:HaftAutoRestartToggle` | Toggle auto-restart on file save |
 
+### Template Management
+
+| Command | Description |
+|---------|-------------|
+| `:HaftTemplateInit` | Initialize custom templates in project (.haft/templates/) |
+| `:HaftTemplateInit [category]` | Initialize templates for specific category (resource, etc.) |
+| `:HaftTemplateList` | List all available templates and their sources |
+| `:HaftTemplateValidate` | Validate custom templates for syntax errors |
+| `:HaftTemplateValidate vars` | Show available template variables |
+
+### CLI Management
+
+| Command | Description |
+|---------|-------------|
+| `:HaftVersion` | Show Haft CLI version |
+| `:HaftUpgrade` | Upgrade Haft CLI to latest version (runs in terminal) |
+| `:HaftUpgrade check` | Check for updates without installing |
+| `:HaftUpgrade force` | Force reinstall even if on latest |
+| `:HaftUpgrade [version]` | Upgrade to specific version (e.g., `v0.5.0`) |
+
 ## Telescope Extension
 
 ```vim
@@ -326,6 +348,11 @@ vim.keymap.set("n", "<leader>ho", "<cmd>HaftOutdated<cr>", { desc = "Haft: Outda
 
 vim.keymap.set("n", "<leader>hn", "<cmd>HaftInit<cr>", { desc = "Haft: New project" })
 vim.keymap.set("n", "<leader>hN", "<cmd>HaftInitWizard<cr>", { desc = "Haft: New project (wizard)" })
+
+vim.keymap.set("n", "<leader>htl", "<cmd>HaftTemplateList<cr>", { desc = "Haft: Template list" })
+vim.keymap.set("n", "<leader>htv", "<cmd>HaftTemplateValidate<cr>", { desc = "Haft: Template validate" })
+vim.keymap.set("n", "<leader>hv", "<cmd>HaftVersion<cr>", { desc = "Haft: Version" })
+vim.keymap.set("n", "<leader>hU", "<cmd>HaftUpgrade check<cr>", { desc = "Haft: Check for updates" })
 ```
 
 ### With which-key.nvim
@@ -396,6 +423,15 @@ haft.init(opts)             -- Open mode picker or use opts.mode
 haft.init_tui()             -- TUI wizard (LazyGit-style terminal)
 haft.init_wizard()          -- Neovim native step-by-step wizard
 haft.init_quick(opts)       -- Quick create with defaults
+
+-- Template management
+haft.template_init(opts)    -- Initialize templates, opts: {category="resource"}
+haft.template_list()        -- List available templates
+haft.template_validate(opts) -- Validate templates, opts: {vars=true}
+
+-- CLI management
+haft.version()              -- Show Haft CLI version
+haft.upgrade(opts)          -- Upgrade CLI, opts: {check=true}, {force=true}, {version="v0.5.0"}
 ```
 
 ## User Events

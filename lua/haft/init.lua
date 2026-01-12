@@ -209,4 +209,32 @@ function M.init_quick(opts)
   api.init_quick(opts)
 end
 
+---@param opts table?
+function M.template_init(opts)
+  local api = require("haft.api")
+  api.template_init(opts)
+end
+
+function M.template_list()
+  local api = require("haft.api")
+  api.template_list()
+end
+
+---@param opts table?
+function M.template_validate(opts)
+  local api = require("haft.api")
+  api.template_validate(opts)
+end
+
+function M.version()
+  local api = require("haft.api")
+  api.version()
+end
+
+---@param opts table?
+function M.upgrade(opts)
+  local api = require("haft.api")
+  api.upgrade(opts)
+end
+
 return M
