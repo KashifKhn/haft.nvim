@@ -96,6 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Telescope Extension
 - `:Telescope haft dependencies` - Browse and add dependencies
 - `:Telescope haft remove` - Browse and remove dependencies
+- `:Telescope haft routes` - Browse API routes (jump to source)
+- `:Telescope haft templates` - Browse templates (open/init)
 - Configurable themes and layouts
 - Fallback to native vim.ui.select
 
@@ -105,13 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `require("haft.config")` - Configuration management
 - `require("haft.detection")` - Project detection utilities
 
-#### Events (User Autocommands)
-- `HaftProjectDetected` - Fired when project is detected
-- `HaftGenerateComplete` - Fired after code generation
-- `HaftDependencyAdded` - Fired after adding dependency
-- `HaftDependencyRemoved` - Fired after removing dependency
-- `HaftServeStarted` - Fired when dev server starts
-- `HaftServeStopped` - Fired when dev server stops
+### Planned
+- User autocommand events (HaftProjectDetected, HaftGenerateComplete, etc.)
 
 ---
 

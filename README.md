@@ -454,35 +454,14 @@ haft.upgrade(opts)          -- Upgrade CLI, opts: {check=true}, {force=true}, {v
 
 ## User Events
 
-```lua
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftProjectDetected",
-  callback = function(ev)
-    print("Haft project detected: " .. ev.data.name)
-  end,
-})
+> **Note:** Events are planned for a future release. The following events will be supported:
 
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftFilesGenerated",
-  callback = function(ev)
-    print("Generated " .. #ev.data.files .. " files")
-  end,
-})
-
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftCommandComplete",
-  callback = function(ev)
-    print("Command completed: " .. ev.data.command)
-  end,
-})
-
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftCommandError",
-  callback = function(ev)
-    print("Command failed: " .. ev.data.error)
-  end,
-})
-```
+- `HaftProjectDetected` - Fired when a Haft project is detected
+- `HaftGenerateComplete` - Fired after code generation completes
+- `HaftDependencyAdded` - Fired after adding a dependency
+- `HaftDependencyRemoved` - Fired after removing a dependency
+- `HaftServeStarted` - Fired when dev server starts
+- `HaftServeStopped` - Fired when dev server stops
 
 ## Health Check
 

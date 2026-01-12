@@ -133,10 +133,24 @@ Default configuration:~
       },
 
       init = {
-        mode = "tui",
+        default_mode = "tui",
         after_create = "prompt",
         auto_cd = true,
         auto_open = true,
+        defaults = {
+          group = "com.example",
+          java = "21",
+          spring = nil,
+          build = "maven",
+          packaging = "jar",
+          config_format = "yaml",
+        },
+      },
+
+      commands = {
+        generate = {
+          refresh = false,
+        },
       },
     })
 <
@@ -239,14 +253,18 @@ CODE GENERATION                                        *haft-commands-generate*
     Generate Request and Response DTO classes.
 
                                                         *:HaftGenerateException*
-:HaftGenerateException [all]~
+:HaftGenerateException [option]~
     Generate global exception handler.
+    - No args: Opens picker to select exception types
     - `all`: Generate all exception types
+    - `default`: Generate with default exceptions (non-interactive)
 
                                                            *:HaftGenerateConfig*
-:HaftGenerateConfig [all]~
+:HaftGenerateConfig [option]~
     Generate configuration classes (CORS, OpenAPI, Jackson, etc.).
+    - No args: Opens picker to select config classes
     - `all`: Generate all config classes
+    - `default`: Generate with default configs (non-interactive)
 
                                                          *:HaftGenerateSecurity*
 :HaftGenerateSecurity [type]~
@@ -457,6 +475,7 @@ haft.init({opts})          Initialize project (opts: {mode="tui"})
 haft.init_tui()            Initialize with TUI wizard
 haft.init_wizard()         Initialize with Neovim wizard
 haft.init_quick({opts})    Quick initialize (opts: {name="..."})
+haft.init_picker()         Open mode picker (tui/wizard/quick)
 
 ------------------------------------------------------------------------------
 Template Functions~
@@ -474,39 +493,14 @@ haft.upgrade({opts})       Upgrade CLI (opts: {check=true}, {force=true})
 ==============================================================================
 8. EVENTS                                                        *haft-events*
 
-The plugin fires custom User autocommand events:
+Events are planned for a future release. The following events will be added:
 
-                                                        *HaftProjectDetected*
-HaftProjectDetected~
-    Fired when a Haft project is detected.
->lua
-    vim.api.nvim_create_autocmd("User", {
-      pattern = "HaftProjectDetected",
-      callback = function(ev)
-        print("Project: " .. ev.data.name)
-      end,
-    })
-<
-
-                                                       *HaftGenerateComplete*
-HaftGenerateComplete~
-    Fired after code generation completes.
-
-                                                        *HaftDependencyAdded*
-HaftDependencyAdded~
-    Fired after adding a dependency.
-
-                                                      *HaftDependencyRemoved*
-HaftDependencyRemoved~
-    Fired after removing a dependency.
-
-                                                          *HaftServeStarted*
-HaftServeStarted~
-    Fired when dev server starts.
-
-                                                          *HaftServeStopped*
-HaftServeStopped~
-    Fired when dev server stops.
+    - HaftProjectDetected - When a Haft project is detected
+    - HaftGenerateComplete - After code generation completes
+    - HaftDependencyAdded - After adding a dependency
+    - HaftDependencyRemoved - After removing a dependency
+    - HaftServeStarted - When dev server starts
+    - HaftServeStopped - When dev server stops
 
 ==============================================================================
 9. HEALTH CHECK                                                  *haft-health*
