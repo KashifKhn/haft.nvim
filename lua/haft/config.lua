@@ -92,7 +92,7 @@ local defaults = {
 
   detection = {
     enabled = true,
-    patterns = { ".haft.yaml", "pom.xml", "build.gradle", "build.gradle.kts" },
+    patterns = { ".haft.json", "pom.xml", "build.gradle", "build.gradle.kts" },
   },
 
   notifications = {

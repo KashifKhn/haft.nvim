@@ -151,6 +151,81 @@ end
 
 ---@param data table
 ---@return string[]
+local function format_doctor(data)
+  local lines = {}
+
+  table.insert(lines, "Project Health Check")
+  table.insert(lines, string.rep("─", 70))
+  table.insert(lines, "")
+
+  local checks = data.checks or data.results or {}
+  if #checks == 0 and not data.summary then
+    table.insert(lines, "  No health check results found")
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  local icons = {
+    pass = "✓",
+    passed = "✓",
+    ok = "✓",
+    warn = "⚠",
+    warning = "⚠",
+    fail = "✗",
+    failed = "✗",
+    error = "✗",
+    info = "ℹ",
+  }
+
+  local categories = {}
+  for _, check in ipairs(checks) do
+    local cat = check.category or "general"
+    if not categories[cat] then
+      categories[cat] = {}
+    end
+    table.insert(categories[cat], check)
+  end
+
+  for cat, cat_checks in pairs(categories) do
+    table.insert(lines, string.upper(cat))
+    table.insert(lines, string.rep("─", 40))
+
+    for _, check in ipairs(cat_checks) do
+      local status = (check.status or check.result or "info"):lower()
+      local icon = icons[status] or "•"
+      local msg = check.message or check.name or ""
+      table.insert(lines, string.format("  %s %s", icon, msg))
+
+      if check.suggestion or check.fix then
+        table.insert(lines, "    → " .. (check.suggestion or check.fix))
+      end
+    end
+    table.insert(lines, "")
+  end
+
+  if data.summary then
+    table.insert(lines, "Summary")
+    table.insert(lines, string.rep("─", 40))
+    if data.summary.passed ~= nil then
+      table.insert(lines, string.format("  ✓ Passed:   %d", data.summary.passed or 0))
+    end
+    if data.summary.warnings ~= nil then
+      table.insert(lines, string.format("  ⚠ Warnings: %d", data.summary.warnings or 0))
+    end
+    if data.summary.errors ~= nil or data.summary.failed ~= nil then
+      table.insert(lines, string.format("  ✗ Errors:   %d", data.summary.errors or data.summary.failed or 0))
+    end
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@return string[]
 local function format_stats(data)
   local lines = {}
 
@@ -303,7 +378,9 @@ function M.routes()
   })
 end
 
-function M.stats()
+function M.stats(opts)
+  opts = opts or {}
+
   if not runner.is_haft_available() then
     notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
     return
@@ -317,8 +394,13 @@ function M.stats()
 
   notify.info("Fetching statistics...")
 
+  local args = { "stats" }
+  if opts.cocomo then
+    table.insert(args, "--cocomo")
+  end
+
   runner.run({
-    args = { "stats" },
+    args = args,
     cwd = root,
     json = true,
     on_success = function(result)
@@ -333,6 +415,52 @@ function M.stats()
     end,
     on_error = function(result)
       notify.error("Failed to get stats: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.doctor(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  notify.info("Running health check...")
+
+  local args = { "doctor" }
+  if opts.category then
+    table.insert(args, "--category")
+    table.insert(args, opts.category)
+  end
+  if opts.strict then
+    table.insert(args, "--strict")
+  end
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local lines = format_doctor(data)
+        float.open(lines, { title = "Haft Doctor" })
+      else
+        local lines = vim.split(result.output, "\n")
+        float.open(lines, { title = "Haft Doctor" })
+      end
+    end,
+    on_error = function(result)
+      notify.error("Health check failed: " .. result.output)
     end,
   })
 end
@@ -1064,6 +1192,18 @@ function M.outdated()
   run_dev_command("outdated", "Haft Outdated", "haft_outdated")
 end
 
+function M.package()
+  run_dev_command("package", "Haft Package", "haft_package")
+end
+
+function M.validate()
+  run_dev_command("validate", "Haft Validate", "haft_validate")
+end
+
+function M.verify()
+  run_dev_command("verify", "Haft Verify", "haft_verify")
+end
+
 local auto_restart_augroup = nil
 local auto_restart_enabled = false
 
@@ -1382,6 +1522,341 @@ function M.init_quick(opts)
         create_project(name)
       end
     end)
+  end
+end
+
+---@param data table
+---@return string[]
+local function format_template_list(data)
+  local lines = {}
+
+  table.insert(lines, "Available Templates")
+  table.insert(lines, string.rep("─", 60))
+  table.insert(lines, "")
+
+  local templates = data.templates or data
+  if type(templates) ~= "table" or #templates == 0 then
+    table.insert(lines, "  No templates found")
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  local sources = {
+    project = "Project (.haft/templates/)",
+    user = "User (~/.haft/templates/)",
+    builtin = "Built-in",
+  }
+
+  local by_source = {}
+  for _, tmpl in ipairs(templates) do
+    local source = tmpl.source or "builtin"
+    if not by_source[source] then
+      by_source[source] = {}
+    end
+    table.insert(by_source[source], tmpl)
+  end
+
+  for source, source_name in pairs(sources) do
+    if by_source[source] and #by_source[source] > 0 then
+      table.insert(lines, source_name)
+      table.insert(lines, string.rep("─", 40))
+      for _, tmpl in ipairs(by_source[source]) do
+        local name = tmpl.name or tmpl.filename or "unknown"
+        local category = tmpl.category or ""
+        if category ~= "" then
+          table.insert(lines, string.format("  %-20s [%s]", name, category))
+        else
+          table.insert(lines, "  " .. name)
+        end
+      end
+      table.insert(lines, "")
+    end
+  end
+
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@return string[]
+local function format_template_validate(data)
+  local lines = {}
+
+  table.insert(lines, "Template Validation")
+  table.insert(lines, string.rep("─", 60))
+  table.insert(lines, "")
+
+  local results = data.results or data.validations or {}
+  if #results == 0 then
+    if data.valid then
+      table.insert(lines, "  ✓ All templates are valid")
+    else
+      table.insert(lines, "  No templates to validate")
+    end
+    table.insert(lines, "")
+    table.insert(lines, "Press 'q' or <Esc> to close")
+    return lines
+  end
+
+  local valid_count = 0
+  local error_count = 0
+
+  for _, result in ipairs(results) do
+    local name = result.template or result.name or "unknown"
+    local is_valid = result.valid or result.status == "valid"
+
+    if is_valid then
+      table.insert(lines, "  ✓ " .. name)
+      valid_count = valid_count + 1
+    else
+      table.insert(lines, "  ✗ " .. name)
+      error_count = error_count + 1
+      if result.errors then
+        for _, err in ipairs(result.errors) do
+          table.insert(lines, "    → " .. err)
+        end
+      elseif result.error then
+        table.insert(lines, "    → " .. result.error)
+      end
+    end
+  end
+
+  table.insert(lines, "")
+  table.insert(lines, string.rep("─", 60))
+  table.insert(lines, string.format("  Valid: %d  |  Errors: %d", valid_count, error_count))
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param data table
+---@return string[]
+local function format_upgrade_check(data)
+  local lines = {}
+
+  table.insert(lines, "Haft CLI Update Check")
+  table.insert(lines, string.rep("─", 50))
+  table.insert(lines, "")
+
+  if data.current_version then
+    table.insert(lines, "  Current Version: " .. data.current_version)
+  end
+  if data.latest_version then
+    table.insert(lines, "  Latest Version:  " .. data.latest_version)
+  end
+
+  table.insert(lines, "")
+
+  if data.update_available then
+    table.insert(lines, "  ⚠ Update available!")
+    table.insert(lines, "")
+    table.insert(lines, "  Run :HaftUpgrade to install the update")
+  else
+    table.insert(lines, "  ✓ You are on the latest version")
+  end
+
+  table.insert(lines, "")
+  table.insert(lines, "Press 'q' or <Esc> to close")
+
+  return lines
+end
+
+---@param opts table?
+function M.template_init(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local root = detection.get_project_root()
+  if not root then
+    notify.warn("Not in a Haft/Spring Boot project")
+    return
+  end
+
+  local args = { "template", "init" }
+  if opts.category then
+    table.insert(args, "--category")
+    table.insert(args, opts.category)
+  end
+
+  notify.info("Initializing templates...")
+
+  runner.run({
+    args = args,
+    cwd = root,
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local count = data.count or data.created or 0
+        notify.info(string.format("Initialized %d template(s)", count))
+      else
+        notify.info("Templates initialized successfully")
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to initialize templates: " .. result.output)
+    end,
+  })
+end
+
+function M.template_list()
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  notify.info("Fetching templates...")
+
+  runner.run({
+    args = { "template", "list" },
+    cwd = detection.get_project_root() or vim.fn.getcwd(),
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local lines = format_template_list(data)
+        float.open(lines, { title = "Haft Templates" })
+      else
+        local lines = vim.split(result.output, "\n")
+        float.open(lines, { title = "Haft Templates" })
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to list templates: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.template_validate(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local args = { "template", "validate" }
+  if opts.vars then
+    table.insert(args, "--vars")
+  end
+
+  notify.info("Validating templates...")
+
+  runner.run({
+    args = args,
+    cwd = detection.get_project_root() or vim.fn.getcwd(),
+    json = true,
+    on_success = function(result)
+      if result.data then
+        local data = unwrap_response(result.data)
+        local lines = format_template_validate(data)
+        float.open(lines, { title = "Haft Template Validation" })
+      else
+        local lines = vim.split(result.output, "\n")
+        float.open(lines, { title = "Haft Template Validation" })
+      end
+    end,
+    on_error = function(result)
+      notify.error("Template validation failed: " .. result.output)
+    end,
+  })
+end
+
+function M.version()
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  runner.run({
+    args = { "version" },
+    cwd = vim.fn.getcwd(),
+    json = false,
+    on_success = function(result)
+      local version = result.output:gsub("^%s+", ""):gsub("%s+$", "")
+      if version ~= "" then
+        local lines = {
+          "Haft CLI Version",
+          string.rep("─", 40),
+          "",
+          "  " .. version,
+          "",
+          "Press 'q' or <Esc> to close",
+        }
+        float.open(lines, { title = "Haft Version" })
+      else
+        notify.info("Haft CLI version: " .. result.output)
+      end
+    end,
+    on_error = function(result)
+      notify.error("Failed to get version: " .. result.output)
+    end,
+  })
+end
+
+---@param opts table?
+function M.upgrade(opts)
+  opts = opts or {}
+
+  if not runner.is_haft_available() then
+    notify.error("Haft CLI not found. Install from: https://github.com/KashifKhn/haft")
+    return
+  end
+
+  local args = { "upgrade" }
+  if opts.check then
+    table.insert(args, "--check")
+    table.insert(args, "--json")
+
+    notify.info("Checking for updates...")
+
+    runner.run({
+      args = args,
+      cwd = vim.fn.getcwd(),
+      json = true,
+      on_success = function(result)
+        if result.data then
+          local data = unwrap_response(result.data)
+          local lines = format_upgrade_check(data)
+          float.open(lines, { title = "Haft Update Check" })
+        else
+          local lines = vim.split(result.output, "\n")
+          float.open(lines, { title = "Haft Update Check" })
+        end
+      end,
+      on_error = function(result)
+        notify.error("Failed to check for updates: " .. result.output)
+      end,
+    })
+  else
+    if opts.force then
+      table.insert(args, "--force")
+    end
+    if opts.version then
+      table.insert(args, "--version")
+      table.insert(args, opts.version)
+    end
+
+    local terminal = require("haft.ui.terminal")
+    terminal.open("haft_upgrade", {
+      cmd = config.get().haft_path,
+      args = args,
+      cwd = vim.fn.getcwd(),
+      title = "Haft Upgrade",
+      on_exit = function(code)
+        if code == 0 then
+          notify.info("Haft CLI upgraded successfully!")
+        end
+      end,
+    })
   end
 end
 

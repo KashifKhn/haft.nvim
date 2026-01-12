@@ -11,9 +11,27 @@ function M.setup()
     api.routes()
   end, { desc = "Show API routes" })
 
-  vim.api.nvim_create_user_command("HaftStats", function()
-    api.stats()
-  end, { desc = "Show code statistics" })
+  vim.api.nvim_create_user_command("HaftStats", function(opts)
+    local args = opts.args
+    if args == "cocomo" then
+      api.stats({ cocomo = true })
+    else
+      api.stats({})
+    end
+  end, { nargs = "?", desc = "Show code statistics" })
+
+  vim.api.nvim_create_user_command("HaftDoctor", function(opts)
+    local args = opts.args
+    local doctor_opts = {}
+    if args ~= "" then
+      if args == "strict" then
+        doctor_opts.strict = true
+      else
+        doctor_opts.category = args
+      end
+    end
+    api.doctor(doctor_opts)
+  end, { nargs = "?", desc = "Run project health check" })
 
   vim.api.nvim_create_user_command("HaftGenerateResource", function(opts)
     local name = opts.args ~= "" and opts.args or nil
@@ -134,6 +152,18 @@ function M.setup()
     api.outdated()
   end, { desc = "Check for dependency updates" })
 
+  vim.api.nvim_create_user_command("HaftPackage", function()
+    api.package()
+  end, { desc = "Create deployable artifact without tests" })
+
+  vim.api.nvim_create_user_command("HaftValidate", function()
+    api.validate()
+  end, { desc = "Validate project configuration and structure" })
+
+  vim.api.nvim_create_user_command("HaftVerify", function()
+    api.verify()
+  end, { desc = "Run integration tests and quality checks" })
+
   vim.api.nvim_create_user_command("HaftAutoRestartEnable", function()
     api.enable_auto_restart()
   end, { desc = "Enable auto-restart on file save" })
@@ -171,6 +201,45 @@ function M.setup()
     local name = opts.args ~= "" and opts.args or nil
     api.init_quick({ name = name })
   end, { nargs = "?", desc = "Initialize project with defaults (quick mode)" })
+
+  vim.api.nvim_create_user_command("HaftTemplateInit", function(opts)
+    local args = opts.args
+    local template_opts = {}
+    if args ~= "" then
+      template_opts.category = args
+    end
+    api.template_init(template_opts)
+  end, { nargs = "?", desc = "Initialize custom templates in project" })
+
+  vim.api.nvim_create_user_command("HaftTemplateList", function()
+    api.template_list()
+  end, { desc = "List all available templates" })
+
+  vim.api.nvim_create_user_command("HaftTemplateValidate", function(opts)
+    local args = opts.args
+    local validate_opts = {}
+    if args == "vars" then
+      validate_opts.vars = true
+    end
+    api.template_validate(validate_opts)
+  end, { nargs = "?", desc = "Validate custom templates" })
+
+  vim.api.nvim_create_user_command("HaftVersion", function()
+    api.version()
+  end, { desc = "Show Haft CLI version" })
+
+  vim.api.nvim_create_user_command("HaftUpgrade", function(opts)
+    local args = opts.args
+    local upgrade_opts = {}
+    if args == "check" then
+      upgrade_opts.check = true
+    elseif args == "force" then
+      upgrade_opts.force = true
+    elseif args ~= "" then
+      upgrade_opts.version = args
+    end
+    api.upgrade(upgrade_opts)
+  end, { nargs = "?", desc = "Upgrade Haft CLI to latest version" })
 end
 
 return M

@@ -43,9 +43,16 @@ function M.routes()
   api.routes()
 end
 
-function M.stats()
+---@param opts table?
+function M.stats(opts)
   local api = require("haft.api")
-  api.stats()
+  api.stats(opts)
+end
+
+---@param opts table?
+function M.doctor(opts)
+  local api = require("haft.api")
+  api.doctor(opts)
 end
 
 ---@param name string?
@@ -159,6 +166,21 @@ function M.outdated()
   api.outdated()
 end
 
+function M.package()
+  local api = require("haft.api")
+  api.package()
+end
+
+function M.validate()
+  local api = require("haft.api")
+  api.validate()
+end
+
+function M.verify()
+  local api = require("haft.api")
+  api.verify()
+end
+
 function M.enable_auto_restart()
   local api = require("haft.api")
   api.enable_auto_restart()
@@ -200,6 +222,34 @@ end
 function M.init_quick(opts)
   local api = require("haft.api")
   api.init_quick(opts)
+end
+
+---@param opts table?
+function M.template_init(opts)
+  local api = require("haft.api")
+  api.template_init(opts)
+end
+
+function M.template_list()
+  local api = require("haft.api")
+  api.template_list()
+end
+
+---@param opts table?
+function M.template_validate(opts)
+  local api = require("haft.api")
+  api.template_validate(opts)
+end
+
+function M.version()
+  local api = require("haft.api")
+  api.version()
+end
+
+---@param opts table?
+function M.upgrade(opts)
+  local api = require("haft.api")
+  api.upgrade(opts)
 end
 
 return M

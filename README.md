@@ -47,7 +47,7 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "nvim-telescope/telescope.nvim", -- optional but recommended
   },
   cmd = {
-    "HaftInfo", "HaftRoutes", "HaftStats",
+    "HaftInfo", "HaftRoutes", "HaftStats", "HaftDoctor",
     "HaftAdd", "HaftRemove",
     "HaftGenerateResource", "HaftGenerateController",
     "HaftGenerateService", "HaftGenerateRepository", "HaftGenerateEntity",
@@ -56,6 +56,9 @@ Neovim plugin for [Haft CLI](https://github.com/KashifKhn/haft) - The Spring Boo
     "HaftBuild", "HaftTest", "HaftClean", "HaftDeps", "HaftOutdated",
     "HaftAutoRestartEnable", "HaftAutoRestartDisable", "HaftAutoRestartToggle",
     "HaftInit", "HaftInitTui", "HaftInitWizard", "HaftInitQuick",
+    "HaftPackage", "HaftValidate", "HaftVerify",
+    "HaftTemplateInit", "HaftTemplateList", "HaftTemplateValidate",
+    "HaftVersion", "HaftUpgrade",
   },
   opts = {},
 }
@@ -98,7 +101,7 @@ require("haft").setup({
   -- Auto-detection settings
   detection = {
     enabled = true,
-    patterns = { ".haft.yaml", "pom.xml", "build.gradle", "build.gradle.kts" },
+    patterns = { ".haft.json", "pom.xml", "build.gradle", "build.gradle.kts" },
   },
 
   -- Notification settings
@@ -226,6 +229,15 @@ require("haft").setup({
 | `:HaftInfo` | Show project information in floating window |
 | `:HaftRoutes` | Show API routes in floating window |
 | `:HaftStats` | Show code statistics in floating window |
+| `:HaftStats cocomo` | Show statistics with COCOMO cost estimates |
+
+### Project Health
+
+| Command | Description |
+|---------|-------------|
+| `:HaftDoctor` | Run project health check |
+| `:HaftDoctor [category]` | Check specific category (build/source/config/security) |
+| `:HaftDoctor strict` | Strict mode (treats warnings as errors) |
 
 ### Dependency Management
 
@@ -261,6 +273,9 @@ require("haft").setup({
 | `:HaftClean` | Clean build artifacts (runs in terminal) |
 | `:HaftDeps` | Display dependency tree (runs in terminal) |
 | `:HaftOutdated` | Check for dependency updates (runs in terminal) |
+| `:HaftPackage` | Create deployable artifact without tests |
+| `:HaftValidate` | Validate project configuration and structure |
+| `:HaftVerify` | Run integration tests and quality checks |
 
 ### Auto-Restart on Save
 
@@ -270,11 +285,33 @@ require("haft").setup({
 | `:HaftAutoRestartDisable` | Disable auto-restart on file save |
 | `:HaftAutoRestartToggle` | Toggle auto-restart on file save |
 
+### Template Management
+
+| Command | Description |
+|---------|-------------|
+| `:HaftTemplateInit` | Initialize custom templates in project (.haft/templates/) |
+| `:HaftTemplateInit [category]` | Initialize templates for specific category (resource, etc.) |
+| `:HaftTemplateList` | List all available templates and their sources |
+| `:HaftTemplateValidate` | Validate custom templates for syntax errors |
+| `:HaftTemplateValidate vars` | Show available template variables |
+
+### CLI Management
+
+| Command | Description |
+|---------|-------------|
+| `:HaftVersion` | Show Haft CLI version |
+| `:HaftUpgrade` | Upgrade Haft CLI to latest version (runs in terminal) |
+| `:HaftUpgrade check` | Check for updates without installing |
+| `:HaftUpgrade force` | Force reinstall even if on latest |
+| `:HaftUpgrade [version]` | Upgrade to specific version (e.g., `v0.5.0`) |
+
 ## Telescope Extension
 
 ```vim
 :Telescope haft dependencies    " Add dependencies picker
 :Telescope haft remove          " Remove dependencies picker
+:Telescope haft routes          " Browse API routes (jump to source)
+:Telescope haft templates       " Browse templates (open/init)
 ```
 
 Or via Lua:
@@ -282,7 +319,23 @@ Or via Lua:
 ```lua
 require("telescope").extensions.haft.dependencies()
 require("telescope").extensions.haft.remove()
+require("telescope").extensions.haft.routes()
+require("telescope").extensions.haft.templates()
 ```
+
+### Routes Picker Features
+
+- Browse all REST endpoints in your project
+- Preview shows handler details and file location
+- Press `<CR>` to jump to the route handler in source code
+- HTTP methods are color-coded (GET, POST, PUT, DELETE, etc.)
+
+### Templates Picker Features
+
+- Browse all available templates (project/global/embedded)
+- Icons indicate source: `[P]` project, `[G]` global, `[E]` embedded
+- Press `<CR>` to open custom template file
+- Press `<C-i>` to initialize templates for selected category
 
 ## Keybindings
 
@@ -293,6 +346,7 @@ No default keybindings are provided. Configure your own:
 vim.keymap.set("n", "<leader>hi", "<cmd>HaftInfo<cr>", { desc = "Haft: Info" })
 vim.keymap.set("n", "<leader>hr", "<cmd>HaftRoutes<cr>", { desc = "Haft: Routes" })
 vim.keymap.set("n", "<leader>hs", "<cmd>HaftStats<cr>", { desc = "Haft: Stats" })
+vim.keymap.set("n", "<leader>hD", "<cmd>HaftDoctor<cr>", { desc = "Haft: Doctor" })
 
 vim.keymap.set("n", "<leader>ha", "<cmd>HaftAdd<cr>", { desc = "Haft: Add dependency" })
 vim.keymap.set("n", "<leader>hR", "<cmd>HaftRemove<cr>", { desc = "Haft: Remove dependency" })
@@ -316,6 +370,11 @@ vim.keymap.set("n", "<leader>ho", "<cmd>HaftOutdated<cr>", { desc = "Haft: Outda
 
 vim.keymap.set("n", "<leader>hn", "<cmd>HaftInit<cr>", { desc = "Haft: New project" })
 vim.keymap.set("n", "<leader>hN", "<cmd>HaftInitWizard<cr>", { desc = "Haft: New project (wizard)" })
+
+vim.keymap.set("n", "<leader>htl", "<cmd>HaftTemplateList<cr>", { desc = "Haft: Template list" })
+vim.keymap.set("n", "<leader>htv", "<cmd>HaftTemplateValidate<cr>", { desc = "Haft: Template validate" })
+vim.keymap.set("n", "<leader>hv", "<cmd>HaftVersion<cr>", { desc = "Haft: Version" })
+vim.keymap.set("n", "<leader>hU", "<cmd>HaftUpgrade check<cr>", { desc = "Haft: Check for updates" })
 ```
 
 ### With which-key.nvim
@@ -343,7 +402,11 @@ haft.get_project_info()     -- table or nil
 -- Information commands
 haft.info()
 haft.routes()
-haft.stats()
+haft.stats()                -- Show code statistics
+haft.stats({cocomo=true})   -- With COCOMO cost estimates
+haft.doctor()               -- Project health check
+haft.doctor({category="security"}) -- Check specific category
+haft.doctor({strict=true})  -- Strict mode
 
 -- Dependency management
 haft.add(dependencies)      -- array or nil (opens picker if nil)
@@ -370,6 +433,9 @@ haft.test()                 -- Run tests
 haft.clean()                -- Clean build
 haft.deps()                 -- Show dependency tree
 haft.outdated()             -- Check for updates
+haft.package()              -- Create deployable artifact
+haft.validate()             -- Validate project config
+haft.verify()               -- Run integration tests
 
 -- Auto-restart on save
 haft.enable_auto_restart()  -- Enable auto-restart
@@ -382,39 +448,27 @@ haft.init(opts)             -- Open mode picker or use opts.mode
 haft.init_tui()             -- TUI wizard (LazyGit-style terminal)
 haft.init_wizard()          -- Neovim native step-by-step wizard
 haft.init_quick(opts)       -- Quick create with defaults
+
+-- Template management
+haft.template_init(opts)    -- Initialize templates, opts: {category="resource"}
+haft.template_list()        -- List available templates
+haft.template_validate(opts) -- Validate templates, opts: {vars=true}
+
+-- CLI management
+haft.version()              -- Show Haft CLI version
+haft.upgrade(opts)          -- Upgrade CLI, opts: {check=true}, {force=true}, {version="v0.5.0"}
 ```
 
 ## User Events
 
-```lua
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftProjectDetected",
-  callback = function(ev)
-    print("Haft project detected: " .. ev.data.name)
-  end,
-})
+> **Note:** Events are planned for a future release. The following events will be supported:
 
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftFilesGenerated",
-  callback = function(ev)
-    print("Generated " .. #ev.data.files .. " files")
-  end,
-})
-
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftCommandComplete",
-  callback = function(ev)
-    print("Command completed: " .. ev.data.command)
-  end,
-})
-
-vim.api.nvim_create_autocmd("User", {
-  pattern = "HaftCommandError",
-  callback = function(ev)
-    print("Command failed: " .. ev.data.error)
-  end,
-})
-```
+- `HaftProjectDetected` - Fired when a Haft project is detected
+- `HaftGenerateComplete` - Fired after code generation completes
+- `HaftDependencyAdded` - Fired after adding a dependency
+- `HaftDependencyRemoved` - Fired after removing a dependency
+- `HaftServeStarted` - Fired when dev server starts
+- `HaftServeStopped` - Fired when dev server stops
 
 ## Health Check
 
@@ -469,7 +523,7 @@ require("haft").setup({
 Most commands require being in a Haft/Spring Boot project directory. Check:
 
 1. Run `:HaftInfo` to see if project is detected
-2. Look for `pom.xml`, `build.gradle`, or `.haft.yaml` in project root
+2. Look for `pom.xml`, `build.gradle`, or `.haft.json` in project root
 
 ## Contributing
 
