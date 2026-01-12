@@ -35,5 +35,13 @@ return telescope.register_extension({
         end
       end)
     end,
+    routes = function(opts)
+      local picker = require("haft.telescope.pickers.routes")
+      picker.pick()
+    end,
+    templates = function(opts)
+      local picker = require("haft.telescope.pickers.templates")
+      picker.pick()
+    end,
   },
 })

@@ -306,6 +306,8 @@ require("haft").setup({
 ```vim
 :Telescope haft dependencies    " Add dependencies picker
 :Telescope haft remove          " Remove dependencies picker
+:Telescope haft routes          " Browse API routes (jump to source)
+:Telescope haft templates       " Browse templates (open/init)
 ```
 
 Or via Lua:
@@ -313,7 +315,23 @@ Or via Lua:
 ```lua
 require("telescope").extensions.haft.dependencies()
 require("telescope").extensions.haft.remove()
+require("telescope").extensions.haft.routes()
+require("telescope").extensions.haft.templates()
 ```
+
+### Routes Picker Features
+
+- Browse all REST endpoints in your project
+- Preview shows handler details and file location
+- Press `<CR>` to jump to the route handler in source code
+- HTTP methods are color-coded (GET, POST, PUT, DELETE, etc.)
+
+### Templates Picker Features
+
+- Browse all available templates (project/global/embedded)
+- Icons indicate source: `[P]` project, `[G]` global, `[E]` embedded
+- Press `<CR>` to open custom template file
+- Press `<C-i>` to initialize templates for selected category
 
 ## Keybindings
 

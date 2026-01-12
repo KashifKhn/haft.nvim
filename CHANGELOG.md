@@ -7,55 +7,111 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - TBD
+
 ### Added
-- Initial project setup
-- Documentation (README.md, CONTRIBUTING.md, AGENTS.md)
-- Vimdoc (doc/haft.txt)
 
-### Planned
-- Phase 1: Foundation (config, health, detection, runner, parser)
-- Phase 2: UI Components (float, notify, input)
-- Phase 3: Generation Commands
-- Phase 4: Telescope Pickers
-- Phase 5: Terminal & Dev Commands
-- Phase 6: Polish & Events
-- Phase 7: Testing & Documentation
+#### Core Infrastructure
+- Full plugin architecture with modular design
+- Configuration system with deep merging support
+- Health check integration (`:checkhealth haft`)
+- Project detection for Maven/Gradle/Haft projects
+- Async CLI runner with plenary.job
+- JSON response parser for CLI output
 
----
+#### Project Initialization
+- `:HaftInit` - Initialize new project with mode picker
+- `:HaftInit tui` - TUI wizard mode (LazyGit-style)
+- `:HaftInit wizard` - Neovim native wizard mode
+- `:HaftInit <name>` - Quick create with given name
+- `:HaftInitTui` - Direct TUI wizard
+- `:HaftInitWizard` - Direct Neovim wizard
+- `:HaftInitQuick [name]` - Quick create with defaults
 
-## Version History
+#### Project Information
+- `:HaftInfo` - Show project information in floating window
+- `:HaftRoutes` - Show API routes in floating window
+- `:HaftStats` - Show code statistics
+- `:HaftStats cocomo` - Statistics with COCOMO cost estimates
 
-### [1.0.0] - TBD
+#### Project Health
+- `:HaftDoctor` - Run project health check
+- `:HaftDoctor [category]` - Check specific category (build/source/config/security)
+- `:HaftDoctor strict` - Strict mode (warnings as errors)
 
-#### Added
-- Full integration with Haft CLI commands
-- Project information commands (`:HaftInfo`, `:HaftRoutes`, `:HaftStats`)
-- Dependency management (`:HaftAdd`, `:HaftRemove`)
-- Code generation commands
-  - `:HaftGenerate` - Component type picker
-  - `:HaftGenerateResource` - Full CRUD resource
-  - `:HaftGenerateController` - REST controller
-  - `:HaftGenerateService` - Service layer
-  - `:HaftGenerateRepository` - JPA repository
-  - `:HaftGenerateEntity` - JPA entity
-  - `:HaftGenerateDto` - Request/Response DTOs
-  - `:HaftGenerateException` - Exception handler
-  - `:HaftGenerateConfig` - Config classes
-  - `:HaftGenerateSecurity` - Security setup
-- Development commands
-  - `:HaftDevBuild` - Build project
-  - `:HaftDevTest` - Run tests
-  - `:HaftDevServe` - Start dev server
-  - `:HaftDevRestart` - Trigger restart
-  - `:HaftDevClean` - Clean artifacts
-  - `:HaftDevToggle` - Toggle terminal
-- Telescope extension with pickers
-- Floating window displays
-- Terminal management
-- User autocommand events
-- Health check (`:checkhealth haft`)
-- Full configuration system
-- Lua API for programmatic access
+#### Dependency Management
+- `:HaftAdd [dep...]` - Add dependencies (Telescope picker if no args)
+- `:HaftRemove [dep...]` - Remove dependencies (Telescope picker if no args)
+- Telescope pickers with category grouping and fuzzy search
+
+#### Code Generation
+- `:HaftGenerateResource [name]` - Generate complete CRUD resource
+- `:HaftGenerateController [name]` - Generate REST controller
+- `:HaftGenerateService [name]` - Generate service layer
+- `:HaftGenerateRepository [name]` - Generate JPA repository
+- `:HaftGenerateEntity [name]` - Generate JPA entity
+- `:HaftGenerateDto [name]` - Generate Request/Response DTOs
+- `:HaftGenerateException [all]` - Generate global exception handler
+- `:HaftGenerateConfig [all]` - Generate configuration classes
+- `:HaftGenerateSecurity [type]` - Generate security (jwt/session/oauth2/all)
+
+#### Development Commands
+- `:HaftServe` - Start dev server with hot-reload
+- `:HaftServeStop` - Stop the dev server
+- `:HaftServeToggle` - Toggle dev server terminal visibility
+- `:HaftRestart` - Trigger restart of running dev server
+- `:HaftBuild` - Build project
+- `:HaftTest` - Run tests
+- `:HaftClean` - Clean build artifacts
+- `:HaftDeps` - Display dependency tree
+- `:HaftOutdated` - Check for dependency updates
+
+#### Auto-Restart Feature
+- `:HaftAutoRestartEnable` - Enable auto-restart on file save
+- `:HaftAutoRestartDisable` - Disable auto-restart
+- `:HaftAutoRestartToggle` - Toggle auto-restart
+- Configurable file patterns for restart triggers
+
+#### Template Management
+- `:HaftTemplateInit` - Initialize custom templates
+- `:HaftTemplateInit [category]` - Initialize specific category
+- `:HaftTemplateList` - List all available templates
+- `:HaftTemplateValidate` - Validate templates for errors
+- `:HaftTemplateValidate vars` - Show template variables
+
+#### CLI Management
+- `:HaftVersion` - Show Haft CLI version
+- `:HaftUpgrade` - Upgrade to latest version
+- `:HaftUpgrade check` - Check for updates
+- `:HaftUpgrade force` - Force reinstall
+- `:HaftUpgrade [version]` - Install specific version
+
+#### UI Components
+- Floating windows for info display
+- Notification system (info/warn/error levels)
+- Input prompts with vim.ui.input
+- Terminal management (float/split modes)
+- Wizard UI for project initialization
+
+#### Telescope Extension
+- `:Telescope haft dependencies` - Browse and add dependencies
+- `:Telescope haft remove` - Browse and remove dependencies
+- Configurable themes and layouts
+- Fallback to native vim.ui.select
+
+#### Lua API
+- `require("haft")` - Main module with all public functions
+- `require("haft.api")` - Direct API access
+- `require("haft.config")` - Configuration management
+- `require("haft.detection")` - Project detection utilities
+
+#### Events (User Autocommands)
+- `HaftProjectDetected` - Fired when project is detected
+- `HaftGenerateComplete` - Fired after code generation
+- `HaftDependencyAdded` - Fired after adding dependency
+- `HaftDependencyRemoved` - Fired after removing dependency
+- `HaftServeStarted` - Fired when dev server starts
+- `HaftServeStopped` - Fired when dev server stops
 
 ---
 

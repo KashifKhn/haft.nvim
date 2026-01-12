@@ -46,6 +46,8 @@ function M.setup()
 
   require("haft.telescope.pickers.dependencies")
   require("haft.telescope.pickers.remove")
+  require("haft.telescope.pickers.routes")
+  require("haft.telescope.pickers.templates")
 end
 
 return M

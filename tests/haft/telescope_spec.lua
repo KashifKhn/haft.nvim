@@ -390,3 +390,235 @@ describe("haft.telescope.pickers.remove", function()
     end)
   end)
 end)
+
+describe("haft.telescope.pickers.routes", function()
+  describe("parse_routes helper", function()
+    it("parses routes from data", function()
+      local parse = function(data)
+        local routes = {}
+        local raw_routes = data.routes or data or {}
+
+        if type(raw_routes) ~= "table" then
+          return routes
+        end
+
+        for _, route in ipairs(raw_routes) do
+          table.insert(routes, {
+            method = route.method or "GET",
+            path = route.path or route.endpoint or "",
+            handler = route.handler or route.method_name or "",
+            controller = route.controller or route.class or "",
+            file = route.file or "",
+            line = route.line or 0,
+          })
+        end
+
+        return routes
+      end
+
+      local data = {
+        routes = {
+          {
+            method = "GET",
+            path = "/api/users",
+            handler = "getAll",
+            controller = "UserController",
+            file = "src/main/java/com/example/UserController.java",
+            line = 25,
+          },
+          {
+            method = "POST",
+            path = "/api/users",
+            handler = "create",
+            controller = "UserController",
+            file = "src/main/java/com/example/UserController.java",
+            line = 35,
+          },
+        },
+      }
+
+      local routes = parse(data)
+      assert.equals(2, #routes)
+      assert.equals("GET", routes[1].method)
+      assert.equals("/api/users", routes[1].path)
+      assert.equals("getAll", routes[1].handler)
+      assert.equals("UserController", routes[1].controller)
+      assert.equals(25, routes[1].line)
+      assert.equals("POST", routes[2].method)
+    end)
+
+    it("handles empty routes", function()
+      local parse = function(data)
+        local routes = {}
+        local raw_routes = data.routes or data or {}
+
+        if type(raw_routes) ~= "table" then
+          return routes
+        end
+
+        for _, route in ipairs(raw_routes) do
+          table.insert(routes, route)
+        end
+
+        return routes
+      end
+
+      local data = { routes = {} }
+      local routes = parse(data)
+      assert.equals(0, #routes)
+    end)
+
+    it("uses defaults for missing fields", function()
+      local parse = function(data)
+        local routes = {}
+        local raw_routes = data.routes or {}
+
+        for _, route in ipairs(raw_routes) do
+          table.insert(routes, {
+            method = route.method or "GET",
+            path = route.path or "",
+            handler = route.handler or "",
+            controller = route.controller or "",
+            file = route.file or "",
+            line = route.line or 0,
+          })
+        end
+
+        return routes
+      end
+
+      local data = {
+        routes = {
+          { path = "/api/health" },
+        },
+      }
+
+      local routes = parse(data)
+      assert.equals(1, #routes)
+      assert.equals("GET", routes[1].method)
+      assert.equals("/api/health", routes[1].path)
+      assert.equals("", routes[1].handler)
+      assert.equals(0, routes[1].line)
+    end)
+  end)
+end)
+
+describe("haft.telescope.pickers.templates", function()
+  describe("parse_templates helper", function()
+    it("parses templates from data", function()
+      local parse = function(data)
+        local templates = {}
+        local raw_templates = data.templates or data or {}
+
+        if type(raw_templates) ~= "table" then
+          return templates
+        end
+
+        for _, template in ipairs(raw_templates) do
+          table.insert(templates, {
+            name = template.name or "",
+            category = template.category or "other",
+            source = template.source or "embedded",
+            path = template.path or "",
+            custom = template.source ~= "embedded",
+          })
+        end
+
+        return templates
+      end
+
+      local data = {
+        templates = {
+          {
+            name = "controller.tmpl",
+            category = "resource",
+            source = "embedded",
+            path = "",
+          },
+          {
+            name = "service.tmpl",
+            category = "resource",
+            source = "project",
+            path = ".haft/templates/resource/service.tmpl",
+          },
+        },
+      }
+
+      local templates = parse(data)
+      assert.equals(2, #templates)
+      assert.equals("controller.tmpl", templates[1].name)
+      assert.equals("resource", templates[1].category)
+      assert.equals("embedded", templates[1].source)
+      assert.is_false(templates[1].custom)
+      assert.equals("service.tmpl", templates[2].name)
+      assert.equals("project", templates[2].source)
+      assert.is_true(templates[2].custom)
+    end)
+
+    it("handles empty templates", function()
+      local parse = function(data)
+        local templates = {}
+        local raw_templates = data.templates or {}
+
+        for _, template in ipairs(raw_templates) do
+          table.insert(templates, template)
+        end
+
+        return templates
+      end
+
+      local data = { templates = {} }
+      local templates = parse(data)
+      assert.equals(0, #templates)
+    end)
+
+    it("uses defaults for missing fields", function()
+      local parse = function(data)
+        local templates = {}
+        local raw_templates = data.templates or {}
+
+        for _, template in ipairs(raw_templates) do
+          table.insert(templates, {
+            name = template.name or "",
+            category = template.category or "other",
+            source = template.source or "embedded",
+            path = template.path or "",
+          })
+        end
+
+        return templates
+      end
+
+      local data = {
+        templates = {
+          { name = "custom.tmpl" },
+        },
+      }
+
+      local templates = parse(data)
+      assert.equals(1, #templates)
+      assert.equals("custom.tmpl", templates[1].name)
+      assert.equals("other", templates[1].category)
+      assert.equals("embedded", templates[1].source)
+    end)
+  end)
+
+  describe("source_icon helper", function()
+    it("returns correct icons for sources", function()
+      local source_icon = function(source)
+        if source == "project" then
+          return "[P]"
+        elseif source == "global" then
+          return "[G]"
+        else
+          return "[E]"
+        end
+      end
+
+      assert.equals("[P]", source_icon("project"))
+      assert.equals("[G]", source_icon("global"))
+      assert.equals("[E]", source_icon("embedded"))
+      assert.equals("[E]", source_icon("unknown"))
+    end)
+  end)
+end)
